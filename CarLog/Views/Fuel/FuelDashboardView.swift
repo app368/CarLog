@@ -46,12 +46,13 @@ struct FuelDashboardView: View {
                 .font(.headline)
             Chart(monthlyTotals, id: \.month) { item in
                 BarMark(x: .value("Month", item.month, unit: .month),
-                        y: .value("Total", item.total))
+                        y: .value("Total", item.total),
+                        width: .ratio(0.5))
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: .month)) { _ in
                     AxisGridLine()
-                    AxisValueLabel(format: .dateTime.month(.narrow), centered: true)
+                    AxisValueLabel(format: .dateTime.month(.abbreviated), centered: true)
                 }
             }
             .chartYAxis {

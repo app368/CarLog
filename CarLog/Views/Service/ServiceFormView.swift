@@ -27,6 +27,7 @@ struct ServiceFormView: View {
                         .lineLimit(3...6)
                 }
             }
+            .keyboardDoneButton()
             .navigationTitle(entry == nil ? "New Service" : "Edit Service")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

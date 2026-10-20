@@ -44,6 +44,7 @@ struct FuelFormView: View {
                     }
                 }
             }
+            .keyboardDoneButton()
             .navigationTitle(entry == nil ? "New Fill-up" : "Edit Fill-up")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

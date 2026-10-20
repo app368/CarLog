@@ -10,7 +10,8 @@ struct FuelListView: View {
     var body: some View {
         NavigationStack {
             List {
-                if !entries.isEmpty {
+                // График имеет смысл с двух записей — одна точка линию не рисует
+                if entries.count >= 2 {
                     Section {
                         FuelDashboardView(entries: entries)
                     }

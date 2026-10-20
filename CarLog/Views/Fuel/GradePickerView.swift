@@ -24,9 +24,12 @@ struct GradePickerView: View {
                         Spacer()
                         if grade == selection {
                             Image(systemName: "checkmark")
+                                .foregroundStyle(.tint)
                         }
                     }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .swipeActions {
                     Button("Delete", role: .destructive) { delete(grade) }
                     Button("Edit") { editing = grade }

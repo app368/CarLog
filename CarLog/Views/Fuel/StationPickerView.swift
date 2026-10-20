@@ -31,9 +31,12 @@ struct StationPickerView: View {
                         Spacer()
                         if station == selection {
                             Image(systemName: "checkmark")
+                                .foregroundStyle(.tint)
                         }
                     }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .swipeActions {
                     Button("Delete", role: .destructive) { delete(station) }
                     Button("Edit") { editing = station }

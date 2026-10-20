@@ -27,6 +27,7 @@ struct InsuranceFormView: View {
                     DatePicker("Valid until", selection: $validUntil, displayedComponents: .date)
                 }
             }
+            .keyboardDoneButton()
             .navigationTitle(entry == nil ? "New Payment" : "Edit Payment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
