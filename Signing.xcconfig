@@ -1,0 +1,5 @@
+// Подпись приложения: в репозитории — заглушки, настоящие значения — в Local.xcconfig (не в git)
+DEVELOPMENT_TEAM =
+PRODUCT_BUNDLE_IDENTIFIER = com.example.CarLog
+
+#include? "Local.xcconfig"
