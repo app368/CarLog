@@ -7,12 +7,14 @@ struct ServiceFormView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \MaintenanceItem.name) private var schedule: [MaintenanceItem]
 
     @State private var date = Date.now
     @State private var odometer = ""
     @State private var amount = ""
     @State private var work = ""
     @State private var didLoad = false
+    @State private var doneItems: Set<PersistentIdentifier> = []
 
     var body: some View {
         NavigationStack {
@@ -25,6 +27,14 @@ struct ServiceFormView: View {
                 Section("Work done") {
                     TextField("Oil change, filters…", text: $work, axis: .vertical)
                         .lineLimit(3...6)
+                }
+                // Задача: при новой записи отметить выполненные пункты норматива
+                if entry == nil, !schedule.isEmpty {
+                    Section("Schedule items done") {
+                        ForEach(schedule) { item in
+                            Toggle(item.name, isOn: binding(for: item))
+                        }
+                    }
                 }
             }
             .keyboardDoneButton()
@@ -57,7 +67,11 @@ struct ServiceFormView: View {
     private func save() {
         guard let value = NumberInput.double(amount) else { return }
         let miles = NumberInput.int(odometer)
-        let cleanWork = work.trimmingCharacters(in: .whitespacesAndNewlines)
+        let selected = schedule.filter { doneItems.contains($0.persistentModelID) }
+        var cleanWork = work.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Если описание пустое — подставить названия отмеченных пунктов
+        if cleanWork.isEmpty { cleanWork = selected.map(\.name).joined(separator: ", ") }
+        selected.forEach { $0.markDone(date: date, odometer: miles) }
         if let entry {
             entry.date = date
             entry.odometer = miles
@@ -67,5 +81,17 @@ struct ServiceFormView: View {
             context.insert(ServiceEntry(date: date, odometer: miles, amount: value, work: cleanWork))
         }
         dismiss()
+    }
+}
+
+extension ServiceFormView {
+    // Задача: связать переключатель с набором отмеченных пунктов норматива
+    private func binding(for item: MaintenanceItem) -> Binding<Bool> {
+        Binding(
+            get: { doneItems.contains(item.persistentModelID) },
+            set: { isOn in
+                if isOn { doneItems.insert(item.persistentModelID) } else { doneItems.remove(item.persistentModelID) }
+            }
+        )
     }
 }

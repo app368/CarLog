@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// Задача: главный экран вкладки Fuel — дашборд сверху и список заправок
+// Задача: главный экран вкладки Fuel — список заправок
 struct FuelListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \FuelEntry.date, order: .reverse) private var entries: [FuelEntry]
@@ -10,12 +10,6 @@ struct FuelListView: View {
     var body: some View {
         NavigationStack {
             List {
-                // График имеет смысл с двух записей — одна точка линию не рисует
-                if entries.count >= 2 {
-                    Section {
-                        FuelDashboardView(entries: entries)
-                    }
-                }
                 Section {
                     ForEach(entries) { entry in
                         NavigationLink(value: entry) {
