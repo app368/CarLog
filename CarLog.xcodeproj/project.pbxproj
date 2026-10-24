@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		AA0000000000000000000010 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		AA0000000000000000000001 /* CarLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CarLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000010 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */

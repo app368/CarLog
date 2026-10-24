@@ -89,6 +89,14 @@ final class MaintenanceItem {
         return parts.isEmpty ? "No interval" : "Every " + parts.joined(separator: " or ")
     }
 
+    // Задача: короткая подпись интервала для таблицы регламента
+    var intervalShort: String {
+        var parts: [String] = []
+        if let intervalMiles { parts.append(intervalMiles.asMiles) }
+        if let intervalMonths { parts.append("\(intervalMonths) mo") }
+        return parts.isEmpty ? "—" : parts.joined(separator: " or ")
+    }
+
     // Задача: отметить работу выполненной — если запись не старее последней отметки
     func markDone(date: Date, odometer: Int?) {
         if let lastDate, date < lastDate { return }

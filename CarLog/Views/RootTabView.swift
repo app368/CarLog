@@ -19,7 +19,7 @@ struct RootTabView: View {
             StatsView()
                 .tabItem { Label("Stats", systemImage: "chart.xyaxis.line") }
             CarView()
-                .tabItem { Label("Car", systemImage: "car") }
+                .tabItem { Label("My Car", systemImage: "car") }
         }
         .onAppear(perform: seedIfNeeded)
     }
