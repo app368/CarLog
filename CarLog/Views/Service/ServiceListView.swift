@@ -107,7 +107,7 @@ struct MaintenanceRow: View {
         switch status {
         case .noRecord: .secondary
         case .ok: .green
-        case .soon: .orange
+        case .soon: Color("StatusSoon")
         case .overdue: .red
         }
     }

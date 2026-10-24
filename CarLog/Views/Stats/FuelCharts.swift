@@ -40,6 +40,7 @@ struct PriceChart: View {
             PointMark(x: .value("Date", entry.date, unit: .day),
                       y: .value("Price", entry.pricePerGallon))
         }
+        .foregroundStyle(Color.accentColor)
         .chartYScale(domain: .automatic(includesZero: false))
         .chartYAxis {
             AxisMarks { value in
@@ -64,6 +65,7 @@ struct SpendingChart: View {
                     y: .value("Total", item.total),
                     width: .ratio(0.5))
         }
+        .foregroundStyle(Color.accentColor)
         .chartXAxis {
             AxisMarks(values: .stride(by: .month)) { _ in
                 AxisGridLine()
