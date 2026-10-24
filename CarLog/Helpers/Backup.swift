@@ -20,7 +20,7 @@ struct Backup: Codable {
         fuel.count + insurance.count + service.count
     }
 
-    struct CarDTO: Codable { var make, model, vin, plate: String; var year: Int? }
+    struct CarDTO: Codable { var manufacturer: String?; var make, model, vin, plate: String; var year: Int? }
     struct StationDTO: Codable { var name, address: String }
     struct FuelDTO: Codable {
         var date: Date; var odometer: Int?; var gallons, total: Double
@@ -45,7 +45,7 @@ enum BackupService {
         let grades = try context.fetch(FetchDescriptor<FuelGrade>())
         var backup = Backup()
         backup.car = try context.fetch(FetchDescriptor<CarProfile>()).first.map {
-            .init(make: $0.make, model: $0.model, vin: $0.vin, plate: $0.plate, year: $0.year)
+            .init(manufacturer: $0.manufacturer, make: $0.make, model: $0.model, vin: $0.vin, plate: $0.plate, year: $0.year)
         }
         backup.stations = stations.map { .init(name: $0.name, address: $0.address) }
         backup.grades = grades.map(\.name)
@@ -84,7 +84,7 @@ enum BackupService {
 
         let car = CarProfile()
         if let dto = backup.car {
-            car.make = dto.make; car.model = dto.model; car.year = dto.year
+            car.manufacturer = dto.manufacturer ?? ""; car.make = dto.make; car.model = dto.model; car.year = dto.year
             car.vin = dto.vin; car.plate = dto.plate
         }
         context.insert(car)
