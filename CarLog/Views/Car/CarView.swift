@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-// Задача: вкладка Car — данные автомобиля и выгрузка/загрузка всех записей
+// Задача: вкладка My Car — данные автомобиля и выгрузка/загрузка всех записей
 struct CarView: View {
     @Environment(\.modelContext) private var context
     @Query private var profiles: [CarProfile]
@@ -20,6 +20,13 @@ struct CarView: View {
                     CarProfileSection(car: car)
                 }
                 Section {
+                    NavigationLink {
+                        MaintenanceGuideView()
+                    } label: {
+                        LabeledContent("Maintenance guide", value: MaintenanceGuide.title)
+                    }
+                }
+                Section {
                     Button("Export Data", systemImage: "square.and.arrow.up", action: exportData)
                     Button("Import Data", systemImage: "square.and.arrow.down") { isImporting = true }
                 } header: {
@@ -29,7 +36,7 @@ struct CarView: View {
                 }
             }
             .keyboardDoneButton()
-            .navigationTitle(profiles.first.map(\.title) ?? "Car")
+            .navigationTitle(profiles.first.map(\.title) ?? "My Car")
             .onAppear(perform: createProfileIfNeeded)
             .fileExporter(isPresented: $isExporting, document: exportDocument,
                           contentType: .json, defaultFilename: BackupService.fileName) { result in
@@ -139,6 +146,6 @@ extension CarProfile {
     // Задача: заголовок вкладки — «2020 Toyota Camry», если данные заполнены
     var title: String {
         let parts = [year.map(String.init), make, model].compactMap { $0 }.filter { !$0.isEmpty }
-        return parts.isEmpty ? "Car" : parts.joined(separator: " ")
+        return parts.isEmpty ? "My Car" : parts.joined(separator: " ")
     }
 }
