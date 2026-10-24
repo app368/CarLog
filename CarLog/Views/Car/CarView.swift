@@ -98,16 +98,20 @@ struct CarProfileSection: View {
 
     var body: some View {
         Section("Car") {
+            LabeledContent("Manufacturer") {
+                TextField("Honda", text: $car.manufacturer)
+                    .multilineTextAlignment(.trailing)
+            }
             LabeledContent("Make") {
-                TextField("Toyota", text: $car.make)
+                TextField("Acura", text: $car.make)
                     .multilineTextAlignment(.trailing)
             }
             LabeledContent("Model") {
-                TextField("Camry", text: $car.model)
+                TextField("MDX", text: $car.model)
                     .multilineTextAlignment(.trailing)
             }
             LabeledContent("Year") {
-                TextField("2020", text: yearText)
+                TextField("2014", text: yearText)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
             }

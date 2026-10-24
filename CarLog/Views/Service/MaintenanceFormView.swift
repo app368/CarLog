@@ -39,7 +39,7 @@ struct MaintenanceFormView: View {
                 } header: {
                     Text("Interval")
                 } footer: {
-                    Text("Typical values — check your owner's manual.")
+                    Text("Preset: 2014–2015 Acura MDX schedule. If Maintenance Minder asks earlier, follow it.")
                 }
                 Section("Last done") {
                     Toggle("Recorded", isOn: $hasLast)
