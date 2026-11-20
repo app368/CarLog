@@ -1,12 +1,11 @@
 import SwiftUI
 import SwiftData
 
-// Задача: таб-бар — бензин, страховка, регламентные работы, графики и данные машины
+// Задача: таб-бар — бензин, страховка, обслуживание, графики и данные машины
 struct RootTabView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("didSeedFuelGrades") private var didSeedFuelGrades = false
-    @AppStorage("didSeedMaintenance") private var didSeedMaintenance = false
-    @AppStorage("didApplyMDX2014Schedule") private var didApplyMDX2014Schedule = false
+    @AppStorage("didSeedMaintenanceV2") private var didSeedMaintenanceV2 = false
 
     var body: some View {
         TabView {
@@ -14,8 +13,8 @@ struct RootTabView: View {
                 .tabItem { Label("Fuel", systemImage: "fuelpump") }
             InsuranceListView()
                 .tabItem { Label("Insurance", systemImage: "checkmark.shield") }
-            ServiceListView()
-                .tabItem { Label("Service", systemImage: "wrench.and.screwdriver") }
+            MaintenanceView()
+                .tabItem { Label("Maintenance", systemImage: "wrench.and.screwdriver") }
             StatsView()
                 .tabItem { Label("Stats", systemImage: "chart.xyaxis.line") }
             CarView()
@@ -24,18 +23,19 @@ struct RootTabView: View {
         .onAppear(perform: seedIfNeeded)
     }
 
-    // Задача: при первом запуске заполнить справочник марок бензина и нормативы;
-    // один раз привести ранее созданные нормативы к регламенту 2014 Acura MDX
+    // Задача: при первом запуске заполнить справочник марок бензина и справочник работ.
+    // При переходе на новый раздел Maintenance старые нормативы заменяются стартовым набором из 16 работ
     private func seedIfNeeded() {
         if !didSeedFuelGrades {
             FuelGrade.defaultNames.forEach { context.insert(FuelGrade(name: $0)) }
             didSeedFuelGrades = true
         }
-        if !didSeedMaintenance || !didApplyMDX2014Schedule {
-            let existing = (try? context.fetch(FetchDescriptor<MaintenanceItem>())) ?? []
-            MaintenanceItem.applyDefaults(to: existing, in: context)
-            didSeedMaintenance = true
-            didApplyMDX2014Schedule = true
+        if !didSeedMaintenanceV2 {
+            (try? context.fetch(FetchDescriptor<MaintenanceItem>()))?.forEach(context.delete)
+            MaintenanceItem.defaults.forEach {
+                context.insert(MaintenanceItem(name: $0.name, intervalMiles: $0.miles, intervalMonths: $0.months, note: $0.note))
+            }
+            didSeedMaintenanceV2 = true
         }
     }
 }
