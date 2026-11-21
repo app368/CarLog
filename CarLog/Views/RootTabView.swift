@@ -17,8 +17,8 @@ struct RootTabView: View {
                 .tabItem { Label("Maintenance", systemImage: "wrench.and.screwdriver") }
             StatsView()
                 .tabItem { Label("Stats", systemImage: "chart.xyaxis.line") }
-            CarView()
-                .tabItem { Label("My Car", systemImage: "car") }
+            InfoView()
+                .tabItem { Label("Info", systemImage: "info.circle") }
         }
         .onAppear(perform: seedIfNeeded)
     }
@@ -37,5 +37,7 @@ struct RootTabView: View {
             }
             didSeedMaintenanceV2 = true
         }
+        // Названия сервисных центров, введённые текстом до появления справочника, переносятся в справочник
+        MaintenanceRecord.migrateCenterNames(in: context)
     }
 }

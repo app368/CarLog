@@ -2,8 +2,8 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-// Задача: вкладка My Car — данные автомобиля и выгрузка/загрузка всех записей
-struct CarView: View {
+// Задача: вкладка Info — данные автомобиля, справочная информация, справочники и выгрузка/загрузка
+struct InfoView: View {
     @Environment(\.modelContext) private var context
     @Query private var profiles: [CarProfile]
 
@@ -20,11 +20,22 @@ struct CarView: View {
                 if let car = profiles.first {
                     CarProfileSection(car: car, focus: $isEditingCar)
                 }
-                Section {
+                Section("Reference") {
                     NavigationLink {
                         MaintenanceGuideView()
                     } label: {
                         LabeledContent("Maintenance guide", value: MaintenanceGuide.title)
+                    }
+                    NavigationLink("Service names") {
+                        ServiceNamesView()
+                    }
+                }
+                Section("Lists") {
+                    NavigationLink("Gas stations") {
+                        GasStationsView()
+                    }
+                    NavigationLink("Service centers") {
+                        ServiceCentersView()
                     }
                 }
                 Section {
@@ -46,7 +57,7 @@ struct CarView: View {
                     }
                 }
             }
-            .navigationTitle(profiles.first.map(\.title) ?? "My Car")
+            .navigationTitle("Info")
             .onAppear(perform: createProfileIfNeeded)
             .fileExporter(isPresented: $isExporting, document: exportDocument,
                           contentType: .json, defaultFilename: BackupService.fileName) { result in
@@ -156,13 +167,5 @@ struct CarProfileSection: View {
     private var yearText: Binding<String> {
         Binding(get: { car.year.map(String.init) ?? "" },
                 set: { car.year = NumberInput.int($0) })
-    }
-}
-
-extension CarProfile {
-    // Задача: заголовок вкладки — «2020 Toyota Camry», если данные заполнены
-    var title: String {
-        let parts = [year.map(String.init), make, model].compactMap { $0 }.filter { !$0.isEmpty }
-        return parts.isEmpty ? "My Car" : parts.joined(separator: " ")
     }
 }

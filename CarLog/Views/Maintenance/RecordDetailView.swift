@@ -11,7 +11,7 @@ struct RecordDetailView: View {
                 LabeledContent("Service", value: record.service?.name ?? "Unknown service")
                 LabeledContent("Date", value: record.date.formatted(date: .long, time: .omitted))
                 LabeledContent("Odometer", value: record.odometer?.asMiles ?? "—")
-                LabeledContent("Service center", value: record.serviceCenter.isEmpty ? "—" : record.serviceCenter)
+                LabeledContent("Service center", value: record.centerName.isEmpty ? "—" : record.centerName)
                 LabeledContent("Cost", value: record.cost.asMoney)
             }
             if !record.note.isEmpty {

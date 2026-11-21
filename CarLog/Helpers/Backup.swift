@@ -5,10 +5,11 @@ import UniformTypeIdentifiers
 
 // Задача: формат файла выгрузки — все записи приложения в одном JSON.
 // Заправки ссылаются на заправку и марку бензина по номеру в списке, записи о работах — на работу по номеру.
-// Версия 2: справочник работ и записи Maintenance. Старые файлы (версия 1) тоже читаются —
-// из них берутся бензин, страховка и машина, а справочник работ заполняется стартовым набором
+// Версия 3: справочник сервисных центров и примечания заправок; записи ссылаются на центр по номеру.
+// Версия 2 читается — названия центров из текста записей собираются в справочник.
+// Версия 1 читается — из неё берутся бензин, страховка и машина, а справочник работ заполняется стартовым набором
 struct Backup: Codable {
-    var version = 2
+    var version = 3
     var exportedAt = Date.now
     var car: CarDTO?
     var stations: [StationDTO] = []
@@ -16,6 +17,7 @@ struct Backup: Codable {
     var fuel: [FuelDTO] = []
     var insurance: [InsuranceDTO] = []
     var services: [ServiceDTO]?
+    var centers: [CenterDTO]?
     var records: [RecordDTO]?
 
     var recordCount: Int {
@@ -23,7 +25,8 @@ struct Backup: Codable {
     }
 
     struct CarDTO: Codable { var manufacturer: String?; var make, model, vin, plate: String; var year: Int? }
-    struct StationDTO: Codable { var name, address: String }
+    struct StationDTO: Codable { var name, address: String; var notes: String? }
+    struct CenterDTO: Codable { var name, address, phone, notes: String }
     struct FuelDTO: Codable {
         var date: Date; var odometer: Int?; var gallons, total: Double
         var station: Int?; var grade: Int?
@@ -31,8 +34,8 @@ struct Backup: Codable {
     struct InsuranceDTO: Codable { var datePaid, validUntil: Date; var amount: Double; var company: String }
     struct ServiceDTO: Codable { var name: String; var intervalMiles, intervalMonths: Int?; var note: String }
     struct RecordDTO: Codable {
-        var service: Int?; var date: Date; var odometer: Int?
-        var serviceCenter: String; var cost: Double; var note: String
+        var service: Int?; var center: Int?; var date: Date; var odometer: Int?
+        var serviceCenter: String?; var cost: Double; var note: String
     }
 }
 
@@ -49,7 +52,7 @@ enum BackupService {
         backup.car = try context.fetch(FetchDescriptor<CarProfile>()).first.map {
             .init(manufacturer: $0.manufacturer, make: $0.make, model: $0.model, vin: $0.vin, plate: $0.plate, year: $0.year)
         }
-        backup.stations = stations.map { .init(name: $0.name, address: $0.address) }
+        backup.stations = stations.map { .init(name: $0.name, address: $0.address, notes: $0.notes) }
         backup.grades = grades.map(\.name)
         backup.fuel = try context.fetch(FetchDescriptor<FuelEntry>()).map { entry in
             .init(date: entry.date, odometer: entry.odometer, gallons: entry.gallons, total: entry.total,
@@ -63,10 +66,13 @@ enum BackupService {
         backup.services = services.map {
             .init(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths, note: $0.note)
         }
+        let centers = try context.fetch(FetchDescriptor<ServiceCenter>())
+        backup.centers = centers.map { .init(name: $0.name, address: $0.address, phone: $0.phone, notes: $0.notes) }
         backup.records = try context.fetch(FetchDescriptor<MaintenanceRecord>()).map { record in
             .init(service: record.service.flatMap { s in services.firstIndex { $0 === s } },
+                  center: record.center.flatMap { c in centers.firstIndex { $0 === c } },
                   date: record.date, odometer: record.odometer,
-                  serviceCenter: record.serviceCenter, cost: record.cost, note: record.note)
+                  serviceCenter: nil, cost: record.cost, note: record.note)
         }
         return try encoder.encode(backup)
     }
@@ -84,6 +90,7 @@ enum BackupService {
         try deleteAll(InsuranceEntry.self, in: context)
         try deleteAll(MaintenanceRecord.self, in: context)
         try deleteAll(MaintenanceItem.self, in: context)
+        try deleteAll(ServiceCenter.self, in: context)
         try deleteAll(CarProfile.self, in: context)
 
         let car = CarProfile()
@@ -93,7 +100,7 @@ enum BackupService {
         }
         context.insert(car)
 
-        let stations = backup.stations.map { Station(name: $0.name, address: $0.address) }
+        let stations = backup.stations.map { Station(name: $0.name, address: $0.address, notes: $0.notes ?? "") }
         let grades = backup.grades.map { FuelGrade(name: $0) }
         stations.forEach(context.insert)
         grades.forEach(context.insert)
@@ -112,12 +119,20 @@ enum BackupService {
             Backup.ServiceDTO(name: $0.name, intervalMiles: $0.miles, intervalMonths: $0.months, note: $0.note)
         }).map { MaintenanceItem(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths, note: $0.note) }
         services.forEach(context.insert)
+        let centers = (backup.centers ?? []).map {
+            ServiceCenter(name: $0.name, address: $0.address, phone: $0.phone, notes: $0.notes)
+        }
+        centers.forEach(context.insert)
         for dto in backup.records ?? [] {
-            let record = MaintenanceRecord(service: nil, date: dto.date, odometer: dto.odometer,
-                                           serviceCenter: dto.serviceCenter, cost: dto.cost, note: dto.note)
+            let record = MaintenanceRecord(service: nil, center: nil, date: dto.date, odometer: dto.odometer,
+                                           cost: dto.cost, note: dto.note)
             context.insert(record)
             record.service = dto.service.flatMap { services.indices.contains($0) ? services[$0] : nil }
+            record.center = dto.center.flatMap { centers.indices.contains($0) ? centers[$0] : nil }
+            record.serviceCenter = dto.serviceCenter ?? ""
         }
+        // Файл версии 2: центр записан текстом — собрать справочник из названий
+        MaintenanceRecord.migrateCenterNames(in: context)
         try context.save()
     }
 

@@ -69,7 +69,7 @@ struct StationPickerView: View {
     }
 }
 
-// Задача: форма заправки — название и адрес
+// Задача: форма заправки — название, адрес и примечание
 struct StationFormView: View {
     let station: Station?
     var onCreate: (Station) -> Void = { _ in }
@@ -78,19 +78,27 @@ struct StationFormView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var address: String
+    @State private var notes: String
 
     init(station: Station?, onCreate: @escaping (Station) -> Void = { _ in }) {
         self.station = station
         self.onCreate = onCreate
         _name = State(initialValue: station?.name ?? "")
         _address = State(initialValue: station?.address ?? "")
+        _notes = State(initialValue: station?.notes ?? "")
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Address", text: $address, axis: .vertical)
+                Section {
+                    TextField("Name", text: $name)
+                    TextField("Address", text: $address, axis: .vertical)
+                }
+                Section("Notes") {
+                    TextField("Optional", text: $notes, axis: .vertical)
+                        .lineLimit(2...6)
+                }
             }
             .navigationTitle(station == nil ? "New Station" : "Edit Station")
             .navigationBarTitleDisplayMode(.inline)
@@ -109,11 +117,13 @@ struct StationFormView: View {
     private func save() {
         let cleanName = name.trimmingCharacters(in: .whitespaces)
         let cleanAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         if let station {
             station.name = cleanName
             station.address = cleanAddress
+            station.notes = cleanNotes
         } else {
-            let new = Station(name: cleanName, address: cleanAddress)
+            let new = Station(name: cleanName, address: cleanAddress, notes: cleanNotes)
             context.insert(new)
             onCreate(new)
         }
