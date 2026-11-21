@@ -22,10 +22,36 @@ enum Orientation {
     }
 }
 
+// Задача: экран в альбомной ориентации со своей кнопкой «назад».
+// Сначала экран поворачивается в портрет, и только потом закрывается:
+// если делать это одновременно, поворот может прервать закрытие и экран останется открытым
+struct LandscapeOnly: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        content
+            .navigationBarBackButtonHidden()
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Back", systemImage: "chevron.backward", action: close)
+                }
+            }
+            .onAppear { Orientation.lock(.landscape) }
+            .onDisappear { Orientation.lock(.portrait) }
+    }
+
+    private func close() {
+        Orientation.lock(.portrait)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            dismiss()
+        }
+    }
+}
+
 extension View {
     // Задача: экран показывается в альбомной ориентации, при уходе с него — снова портретная
     func landscapeOnly() -> some View {
-        onAppear { Orientation.lock(.landscape) }
-            .onDisappear { Orientation.lock(.portrait) }
+        modifier(LandscapeOnly())
     }
 }
