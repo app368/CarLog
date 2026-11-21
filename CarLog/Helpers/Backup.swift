@@ -4,20 +4,22 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 // Задача: формат файла выгрузки — все записи приложения в одном JSON.
-// Заправки ссылаются на заправку и марку бензина по номеру в списке
+// Заправки ссылаются на заправку и марку бензина по номеру в списке, записи о работах — на работу по номеру.
+// Версия 2: справочник работ и записи Maintenance. Старые файлы (версия 1) тоже читаются —
+// из них берутся бензин, страховка и машина, а справочник работ заполняется стартовым набором
 struct Backup: Codable {
-    var version = 1
+    var version = 2
     var exportedAt = Date.now
     var car: CarDTO?
     var stations: [StationDTO] = []
     var grades: [String] = []
     var fuel: [FuelDTO] = []
     var insurance: [InsuranceDTO] = []
-    var service: [ServiceDTO] = []
-    var schedule: [MaintenanceDTO] = []
+    var services: [ServiceDTO]?
+    var records: [RecordDTO]?
 
     var recordCount: Int {
-        fuel.count + insurance.count + service.count
+        fuel.count + insurance.count + (records?.count ?? 0)
     }
 
     struct CarDTO: Codable { var manufacturer: String?; var make, model, vin, plate: String; var year: Int? }
@@ -27,10 +29,10 @@ struct Backup: Codable {
         var station: Int?; var grade: Int?
     }
     struct InsuranceDTO: Codable { var datePaid, validUntil: Date; var amount: Double; var company: String }
-    struct ServiceDTO: Codable { var date: Date; var odometer: Int?; var amount: Double; var work: String }
-    struct MaintenanceDTO: Codable {
-        var name: String; var intervalMiles, intervalMonths: Int?
-        var lastDate: Date?; var lastOdometer: Int?
+    struct ServiceDTO: Codable { var name: String; var intervalMiles, intervalMonths: Int?; var note: String }
+    struct RecordDTO: Codable {
+        var service: Int?; var date: Date; var odometer: Int?
+        var serviceCenter: String; var cost: Double; var note: String
     }
 }
 
@@ -57,12 +59,14 @@ enum BackupService {
         backup.insurance = try context.fetch(FetchDescriptor<InsuranceEntry>()).map {
             .init(datePaid: $0.datePaid, validUntil: $0.validUntil, amount: $0.amount, company: $0.company)
         }
-        backup.service = try context.fetch(FetchDescriptor<ServiceEntry>()).map {
-            .init(date: $0.date, odometer: $0.odometer, amount: $0.amount, work: $0.work)
+        let services = try context.fetch(FetchDescriptor<MaintenanceItem>())
+        backup.services = services.map {
+            .init(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths, note: $0.note)
         }
-        backup.schedule = try context.fetch(FetchDescriptor<MaintenanceItem>()).map {
-            .init(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths,
-                  lastDate: $0.lastDate, lastOdometer: $0.lastOdometer)
+        backup.records = try context.fetch(FetchDescriptor<MaintenanceRecord>()).map { record in
+            .init(service: record.service.flatMap { s in services.firstIndex { $0 === s } },
+                  date: record.date, odometer: record.odometer,
+                  serviceCenter: record.serviceCenter, cost: record.cost, note: record.note)
         }
         return try encoder.encode(backup)
     }
@@ -78,7 +82,7 @@ enum BackupService {
         try deleteAll(Station.self, in: context)
         try deleteAll(FuelGrade.self, in: context)
         try deleteAll(InsuranceEntry.self, in: context)
-        try deleteAll(ServiceEntry.self, in: context)
+        try deleteAll(MaintenanceRecord.self, in: context)
         try deleteAll(MaintenanceItem.self, in: context)
         try deleteAll(CarProfile.self, in: context)
 
@@ -103,14 +107,16 @@ enum BackupService {
             context.insert(InsuranceEntry(datePaid: dto.datePaid, validUntil: dto.validUntil,
                                           amount: dto.amount, company: dto.company))
         }
-        for dto in backup.service {
-            context.insert(ServiceEntry(date: dto.date, odometer: dto.odometer, amount: dto.amount, work: dto.work))
-        }
-        for dto in backup.schedule {
-            let item = MaintenanceItem(name: dto.name, intervalMiles: dto.intervalMiles, intervalMonths: dto.intervalMonths)
-            item.lastDate = dto.lastDate
-            item.lastOdometer = dto.lastOdometer
-            context.insert(item)
+        // Справочник работ: из файла, а для старого файла без него — стартовый набор
+        let services = (backup.services ?? MaintenanceItem.defaults.map {
+            Backup.ServiceDTO(name: $0.name, intervalMiles: $0.miles, intervalMonths: $0.months, note: $0.note)
+        }).map { MaintenanceItem(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths, note: $0.note) }
+        services.forEach(context.insert)
+        for dto in backup.records ?? [] {
+            let record = MaintenanceRecord(service: nil, date: dto.date, odometer: dto.odometer,
+                                           serviceCenter: dto.serviceCenter, cost: dto.cost, note: dto.note)
+            context.insert(record)
+            record.service = dto.service.flatMap { services.indices.contains($0) ? services[$0] : nil }
         }
         try context.save()
     }
