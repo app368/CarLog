@@ -12,12 +12,13 @@ struct CarView: View {
     @State private var isImporting = false
     @State private var pendingImport: Backup?
     @State private var message: String?
+    @FocusState private var isEditingCar: Bool
 
     var body: some View {
         NavigationStack {
             Form {
                 if let car = profiles.first {
-                    CarProfileSection(car: car)
+                    CarProfileSection(car: car, focus: $isEditingCar)
                 }
                 Section {
                     NavigationLink {
@@ -35,7 +36,16 @@ struct CarView: View {
                     Text("Export saves all records to a file. Import replaces all records on this iPhone with the file's contents.")
                 }
             }
-            .keyboardDoneButton()
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                // Задача: кнопка Done над клавиатурой на корневом экране вкладки не появляется —
+                // поэтому, пока редактируется поле, Done показывается в навбаре
+                if isEditingCar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { isEditingCar = false }
+                    }
+                }
+            }
             .navigationTitle(profiles.first.map(\.title) ?? "My Car")
             .onAppear(perform: createProfileIfNeeded)
             .fileExporter(isPresented: $isExporting, document: exportDocument,
@@ -102,35 +112,42 @@ struct CarView: View {
 // Задача: поля данных автомобиля, правки сохраняются сразу
 struct CarProfileSection: View {
     @Bindable var car: CarProfile
+    var focus: FocusState<Bool>.Binding
 
     var body: some View {
         Section("Car") {
             LabeledContent("Manufacturer") {
                 TextField("Honda", text: $car.manufacturer)
                     .multilineTextAlignment(.trailing)
+                    .focused(focus)
             }
             LabeledContent("Make") {
                 TextField("Acura", text: $car.make)
                     .multilineTextAlignment(.trailing)
+                    .focused(focus)
             }
             LabeledContent("Model") {
                 TextField("MDX", text: $car.model)
                     .multilineTextAlignment(.trailing)
+                    .focused(focus)
             }
             LabeledContent("Year") {
                 TextField("2014", text: yearText)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
+                    .focused(focus)
             }
             LabeledContent("VIN") {
                 TextField("Optional", text: $car.vin)
                     .textInputAutocapitalization(.characters)
                     .multilineTextAlignment(.trailing)
+                    .focused(focus)
             }
             LabeledContent("License plate") {
                 TextField("Optional", text: $car.plate)
                     .textInputAutocapitalization(.characters)
                     .multilineTextAlignment(.trailing)
+                    .focused(focus)
             }
         }
     }
