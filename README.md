@@ -10,7 +10,7 @@ Made for a single owner with a handful of records — a fill-up once a month, in
 - **Insurance** — payments with company, amount and policy validity; expired policies are highlighted.
 - **Maintenance** — three screens: Schedule (last and next date for each service with OK / Soon / Overdue status; mileage intervals are turned into dates using your average mileage), Records (completed services with date, service center and cost, filterable by visit date) and Services (the list of services with intervals and notes). The built-in list follows the 2014–2015 Acura MDX Maintenance Minder chart; every service can be edited.
 - **Stats** — price per gallon and monthly spending charts; tap a chart to open it full screen in landscape.
-- **My Car** — manufacturer, make, model, year, VIN and plate; the Acura dealer maintenance chart next to the app intervals; export all records to a JSON file and import them back.
+- **Info** — car details; the Acura dealer maintenance chart next to the app intervals and a list of service names with translations; gas stations and service centers with notes, phone and an address that opens in Apple Maps or Google Maps; export all records to a JSON file and import them back.
 
 Units are US: gallons, miles and dollars. All data stays on the device (SwiftData).
 

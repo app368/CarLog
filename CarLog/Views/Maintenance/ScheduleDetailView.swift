@@ -75,7 +75,7 @@ struct ServiceRecordRow: View {
                 Spacer()
                 Text(record.cost.asMoney)
             }
-            Text(record.serviceCenter.isEmpty ? "—" : record.serviceCenter)
+            Text(record.centerName.isEmpty ? "—" : record.centerName)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

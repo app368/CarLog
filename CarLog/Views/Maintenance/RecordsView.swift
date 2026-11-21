@@ -76,7 +76,7 @@ struct RecordRow: View {
                     .font(.subheadline)
             }
             HStack {
-                Text(record.serviceCenter.isEmpty ? "—" : record.serviceCenter)
+                Text(record.centerName.isEmpty ? "—" : record.centerName)
                 Spacer()
                 Text(record.cost.asMoney)
             }
@@ -104,7 +104,7 @@ private struct FilterSummary: View {
     }
 
     private var summary: String {
-        let centers = Set(records.map(\.serviceCenter).filter { !$0.isEmpty })
+        let centers = Set(records.map(\.centerName).filter { !$0.isEmpty })
         var parts = [date.formatted(date: .abbreviated, time: .omitted)]
         if centers.count == 1, let center = centers.first {
             parts.append(center)

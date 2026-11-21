@@ -11,6 +11,6 @@ struct CarLogApp: App {
             RootTabView()
         }
         .modelContainer(for: [FuelEntry.self, Station.self, FuelGrade.self, InsuranceEntry.self,
-                            MaintenanceItem.self, MaintenanceRecord.self, CarProfile.self])
+                            MaintenanceItem.self, MaintenanceRecord.self, ServiceCenter.self, CarProfile.self])
     }
 }
