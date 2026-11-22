@@ -34,7 +34,7 @@ struct PhoneRow: View {
     let phone: String
 
     var body: some View {
-        if let url = URL(string: "tel:" + phone.filter { $0.isNumber || $0 == "+" }), !phone.isEmpty {
+        if let url = ContactLinks.phone(phone) {
             LabeledContent(title) {
                 Link(phone, destination: url)
             }
@@ -76,8 +76,15 @@ struct EmailRow: View {
     }
 }
 
-// Задача: ссылки для сайта и почты
+// Задача: ссылки для телефона, сайта и почты
 enum ContactLinks {
+    // В ссылке остаются только цифры и «+»; номера со звёздочкой (*677) iOS по ссылке не набирает
+    static func phone(_ text: String) -> URL? {
+        let digits = text.filter { $0.isNumber || $0 == "+" }
+        guard !digits.isEmpty, !text.contains("*") else { return nil }
+        return URL(string: "tel:" + digits)
+    }
+
     static func website(_ text: String) -> URL? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }

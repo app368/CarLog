@@ -6,6 +6,7 @@ struct RootTabView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("didSeedFuelGrades") private var didSeedFuelGrades = false
     @AppStorage("didSeedMaintenanceV2") private var didSeedMaintenanceV2 = false
+    @AppStorage("didSeedEmergencyContacts") private var didSeedEmergency = false
 
     var body: some View {
         TabView {
@@ -39,5 +40,10 @@ struct RootTabView: View {
         }
         // Названия страховых компаний, введённые текстом до появления справочника, переносятся в справочник
         InsuranceEntry.migrateCompanyNames(in: context)
+        // Справочник экстренных служб заполняется стартовым набором один раз — потом удалённое не возвращается
+        if !didSeedEmergency {
+            EmergencyContact.seed(in: context)
+            didSeedEmergency = true
+        }
     }
 }
