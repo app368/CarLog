@@ -55,14 +55,21 @@ enum VisitFileError: LocalizedError {
 }
 
 // Задача: перенос файла визита в приложение.
-// Визит с той же датой и тем же центром (или без центра) обновляется: шапка и строки заменяются, фото остаются.
-// Иначе создаётся новый визит. Центра нет в справочнике — добавляется; работы ищутся по названию
+// Визит ищется только по дате: если он уже введён, строки и пробег заменяются, а центр и фото остаются.
+// Иначе создаётся новый визит. Центр из файла нужен, только если у визита центра нет:
+// не найден в справочнике — добавляется. Работы ищутся по названию
 enum VisitImporter {
-    // Задача: найти уже введённый визит, который этот файл дополняет
+    // Задача: найти уже введённый визит, который этот файл дополняет, — визит в тот же день.
+    // Если таких несколько, сначала тот, у которого центр совпадает с файлом
     static func existingVisit(for file: VisitFile, in visits: [Visit]) -> Visit? {
         guard let day = file.day else { return nil }
         let sameDay = visits.filter { Calendar.current.isDate($0.date, inSameDayAs: day) }
-        return sameDay.first { sameName($0.centerName, file.centerName) } ?? sameDay.first { $0.center == nil }
+        return sameDay.first { sameName($0.centerName, file.centerName) } ?? sameDay.first
+    }
+
+    // Задача: нужен ли центр из файла — да, если визит новый или у введённого визита центра нет
+    static func usesFileCenter(_ file: VisitFile, existing: Visit?) -> Bool {
+        !file.centerName.isEmpty && existing?.center == nil
     }
 
     // Задача: центр из справочника по названию
@@ -81,24 +88,23 @@ enum VisitImporter {
         let centers = try context.fetch(FetchDescriptor<ServiceCenter>())
         let items = try context.fetch(FetchDescriptor<MaintenanceItem>())
 
-        var center: ServiceCenter?
-        if !file.centerName.isEmpty {
-            center = Self.center(named: file.centerName, in: centers)
-            if center == nil {
-                let new = ServiceCenter(name: file.centerName)
-                context.insert(new)
-                center = new
-            }
-        }
-
+        let existing = existingVisit(for: file, in: visits)
         let visit: Visit
-        if let existing = existingVisit(for: file, in: visits) {
+        if let existing {
             visit = existing
         } else {
             visit = Visit(date: file.day ?? .now, odometer: nil, center: nil)
             context.insert(visit)
         }
-        visit.center = center ?? visit.center
+        if usesFileCenter(file, existing: existing) {
+            if let found = Self.center(named: file.centerName, in: centers) {
+                visit.center = found
+            } else {
+                let new = ServiceCenter(name: file.centerName)
+                context.insert(new)
+                visit.center = new
+            }
+        }
         visit.odometer = file.odometer ?? visit.odometer
         if let note = file.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
             visit.note = note

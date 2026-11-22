@@ -19,7 +19,7 @@ struct VisitImportView: View {
             List {
                 Section {
                     LabeledContent("Date", value: file.day?.formatted(date: .long, time: .omitted) ?? file.date)
-                    LabeledContent("Service center", value: file.centerName.isEmpty ? "—" : file.centerName)
+                    LabeledContent("Service center", value: centerName.isEmpty ? "—" : centerName)
                     LabeledContent("Odometer", value: file.odometer?.asMiles ?? "—")
                     LabeledContent("Total") {
                         Text(file.total.asMoney)
@@ -57,15 +57,26 @@ struct VisitImportView: View {
         }
     }
 
+    private var existing: Visit? {
+        VisitImporter.existingVisit(for: file, in: visits)
+    }
+
+    // Задача: центр, который получит визит, — свой у введённого визита, иначе из файла
+    private var centerName: String {
+        VisitImporter.usesFileCenter(file, existing: existing) ? file.centerName : (existing?.centerName ?? "")
+    }
+
     // Задача: что произойдёт при импорте — новый визит или обновление, новый центр
     private var summary: String {
         var parts: [String] = []
-        if VisitImporter.existingVisit(for: file, in: visits) != nil {
-            parts.append("This visit is already here. Its header and services will be replaced; document pages stay.")
+        if existing != nil {
+            parts.append("The visit on this date is already here. Its services and odometer will be replaced; "
+                + "service center and document pages stay.")
         } else {
             parts.append("A new visit will be created.")
         }
-        if !file.centerName.isEmpty, VisitImporter.center(named: file.centerName, in: centers) == nil {
+        if VisitImporter.usesFileCenter(file, existing: existing),
+           VisitImporter.center(named: file.centerName, in: centers) == nil {
             parts.append("Service center “\(file.centerName)” will be added to the list.")
         }
         return parts.joined(separator: " ")
