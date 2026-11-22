@@ -127,14 +127,20 @@ struct DocumentViewer: View {
         .onAppear(perform: load)
     }
 
-    // Задача: подготовить страницы для показа и файлы для Share — «Visit 2025-10-30 - 1.jpg»
+    // Задача: подготовить страницы для показа и файлы для Share
     private func load() {
-        let pages = visit.sortedPages
-        images = pages.compactMap { UIImage(data: $0.imageData) }
+        images = visit.sortedPages.compactMap { UIImage(data: $0.imageData) }
+        files = DocumentFiles.write(visit)
+    }
+}
+
+// Задача: страницы документа файлами JPEG для Share — «Visit 2025-10-30 - 1.jpg» во временной папке
+enum DocumentFiles {
+    static func write(_ visit: Visit) -> [URL] {
         let day = visit.date.fileDay
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Share", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        files = pages.enumerated().compactMap { number, page in
+        return visit.sortedPages.enumerated().compactMap { number, page in
             let url = folder.appendingPathComponent("Visit \(day) - \(number + 1).jpg")
             return (try? page.imageData.write(to: url)) == nil ? nil : url
         }

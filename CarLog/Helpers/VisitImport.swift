@@ -82,13 +82,14 @@ enum VisitImporter {
         items.first { sameName($0.name, name) }
     }
 
-    // Задача: создать или обновить визит по файлу и вернуть его
-    static func apply(_ file: VisitFile, in context: ModelContext) throws -> Visit {
+    // Задача: создать или обновить визит по файлу и вернуть его.
+    // target — визит, из карточки которого запущен импорт: файл записывается прямо в него
+    static func apply(_ file: VisitFile, to target: Visit? = nil, in context: ModelContext) throws -> Visit {
         let visits = try context.fetch(FetchDescriptor<Visit>())
         let centers = try context.fetch(FetchDescriptor<ServiceCenter>())
         let items = try context.fetch(FetchDescriptor<MaintenanceItem>())
 
-        let existing = existingVisit(for: file, in: visits)
+        let existing = target ?? existingVisit(for: file, in: visits)
         let visit: Visit
         if let existing {
             visit = existing

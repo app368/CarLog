@@ -2,9 +2,11 @@ import SwiftUI
 import SwiftData
 
 // Задача: предпросмотр импорта визита — шапка, строки с ценами и работами, что произойдёт при импорте.
-// Работы, которых нет в справочнике, помечены красным: строка импортируется без них
+// Работы, которых нет в справочнике, помечены красным: строка импортируется без них.
+// Из карточки визита (target) файл записывается прямо в этот визит; из списка — в визит на дату файла
 struct VisitImportView: View {
     let file: VisitFile
+    var target: Visit? = nil
     var onImport: (Visit) -> Void = { _ in }
 
     @Environment(\.modelContext) private var context
@@ -58,7 +60,7 @@ struct VisitImportView: View {
     }
 
     private var existing: Visit? {
-        VisitImporter.existingVisit(for: file, in: visits)
+        target ?? VisitImporter.existingVisit(for: file, in: visits)
     }
 
     // Задача: центр, который получит визит, — свой у введённого визита, иначе из файла
@@ -69,11 +71,17 @@ struct VisitImportView: View {
     // Задача: что произойдёт при импорте — новый визит или обновление, новый центр
     private var summary: String {
         var parts: [String] = []
-        if existing != nil {
+        if target != nil {
+            parts.append("Services and odometer of this visit will be replaced; service center and document pages stay.")
+        } else if existing != nil {
             parts.append("The visit on this date is already here. Its services and odometer will be replaced; "
                 + "service center and document pages stay.")
         } else {
             parts.append("A new visit will be created.")
+        }
+        if let target, let day = file.day, !Calendar.current.isDate(target.date, inSameDayAs: day) {
+            parts.append("Note: the file is for \(day.formatted(date: .abbreviated, time: .omitted)), "
+                + "this visit is on \(target.date.formatted(date: .abbreviated, time: .omitted)).")
         }
         if VisitImporter.usesFileCenter(file, existing: existing),
            VisitImporter.center(named: file.centerName, in: centers) == nil {
@@ -85,7 +93,7 @@ struct VisitImportView: View {
     // Задача: перенести визит в приложение и открыть его карточку
     private func importVisit() {
         do {
-            let visit = try VisitImporter.apply(file, in: context)
+            let visit = try VisitImporter.apply(file, to: target, in: context)
             onImport(visit)
             dismiss()
         } catch {

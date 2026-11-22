@@ -15,6 +15,10 @@ struct VisitDetailView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var viewerStart: PageIndex?
     @State private var pendingPageDelete: DocumentPage?
+    @State private var shareFiles: [URL] = []
+    @State private var isPickingFile = false
+    @State private var importFile: VisitFile?
+    @State private var message: String?
 
     var body: some View {
         List {
@@ -68,6 +72,31 @@ struct VisitDetailView: View {
                             titleVisibility: .visible) {
             Button("Delete Page", role: .destructive, action: deletePage)
         }
+        .fileImporter(isPresented: $isPickingFile, allowedContentTypes: [.json]) { result in
+            readFile(result)
+        }
+        .sheet(item: $importFile) { file in
+            VisitImportView(file: file, target: visit)
+        }
+        .alert(message ?? "", isPresented: Binding(get: { message != nil },
+                                                  set: { if !$0 { message = nil } })) {
+            Button("OK", role: .cancel) {}
+        }
+        .task(id: visit.pages.count) {
+            shareFiles = DocumentFiles.write(visit)
+        }
+    }
+
+    // Задача: прочитать выбранный файл визита и показать предпросмотр импорта в этот визит
+    private func readFile(_ result: Result<URL, Error>) {
+        do {
+            let url = try result.get()
+            let hasAccess = url.startAccessingSecurityScopedResource()
+            defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
+            importFile = try VisitFile.decode(Data(contentsOf: url))
+        } catch {
+            message = "This file can't be imported. \(error.localizedDescription)"
+        }
     }
 
     // Задача: секция строк визита — тап открывает форму строки, свайп удаляет, внизу Add Service
@@ -90,10 +119,17 @@ struct VisitDetailView: View {
         }
     }
 
-    // Задача: секция документа — миниатюры страниц (тап — на весь экран, долгое нажатие — удалить),
-    // съёмка сканером и добавление из Фото
+    // Задача: секция документа — сверху съёмка сканером и добавление из Фото,
+    // ниже миниатюры страниц (тап — на весь экран, долгое нажатие — удалить),
+    // внизу Share (страницы на Mac) и Import (строки из файла визита — в этот визит)
     private var documentsSection: some View {
-        Section("Documents") {
+        Section {
+            if DocumentScanner.isSupported {
+                Button("Scan Document", systemImage: "doc.viewfinder") { isScanning = true }
+            }
+            PhotosPicker(selection: $photoItems, matching: .images) {
+                Label("Add from Photos", systemImage: "photo.on.rectangle")
+            }
             if !visit.pages.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
@@ -110,12 +146,16 @@ struct VisitDetailView: View {
                     .padding(.vertical, 4)
                 }
             }
-            if DocumentScanner.isSupported {
-                Button("Scan Document", systemImage: "doc.viewfinder") { isScanning = true }
+            if !shareFiles.isEmpty {
+                ShareLink(items: shareFiles) {
+                    Label("Share Document", systemImage: "square.and.arrow.up")
+                }
             }
-            PhotosPicker(selection: $photoItems, matching: .images) {
-                Label("Add from Photos", systemImage: "photo.on.rectangle")
-            }
+            Button("Import from File", systemImage: "square.and.arrow.down") { isPickingFile = true }
+        } header: {
+            Text("Documents")
+        } footer: {
+            Text("Share sends the pages to your Mac. Import adds the services and prices from the visit file made from them.")
         }
     }
 
