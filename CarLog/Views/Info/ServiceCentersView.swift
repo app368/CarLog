@@ -34,7 +34,7 @@ struct ServiceCentersView: View {
             }
             Button("Cancel", role: .cancel) { pendingDelete = nil }
         } message: {
-            Text(UsageText.deleteMessage(count: pendingDelete?.records.count ?? 0, item: "record"))
+            Text(UsageText.deleteMessage(count: pendingDelete?.visits.count ?? 0, item: "visit"))
         }
         .overlay {
             if centers.isEmpty {
@@ -44,10 +44,10 @@ struct ServiceCentersView: View {
         }
     }
 
-    // Задача: удаление свайпом; если по центру уже есть записи — сначала спросить
+    // Задача: удаление свайпом; если у центра уже есть визиты — сначала спросить
     private func requestDelete(at offsets: IndexSet) {
         guard let center = offsets.map({ centers[$0] }).first else { return }
-        if center.records.isEmpty {
+        if center.visits.isEmpty {
             context.delete(center)
         } else {
             pendingDelete = center
@@ -55,7 +55,8 @@ struct ServiceCentersView: View {
     }
 }
 
-// Задача: карточка сервисного центра — адрес (тап — на карту), телефон (тап — звонок), примечание
+// Задача: карточка сервисного центра — название, адрес (тап — на карту), сайт (тап — в браузер),
+// телефон (тап — звонок), email (тап — новое письмо), примечание и число визитов
 struct ServiceCenterDetailView: View {
     let center: ServiceCenter
     @State private var isEditing = false
@@ -65,13 +66,16 @@ struct ServiceCenterDetailView: View {
             Section {
                 LabeledContent("Name", value: center.name)
                 AddressRow(address: center.address)
+                WebsiteRow(website: center.website)
                 PhoneRow(phone: center.phone)
-                LabeledContent("Records", value: "\(center.records.count)")
+                EmailRow(email: center.email)
             }
-            if !center.notes.isEmpty {
-                Section("Notes") {
-                    Text(center.notes)
-                }
+            Section("Notes") {
+                Text(center.notes.isEmpty ? "—" : center.notes)
+                    .foregroundStyle(center.notes.isEmpty ? .secondary : .primary)
+            }
+            Section {
+                LabeledContent("Visits", value: "\(center.visits.count)")
             }
         }
         .navigationTitle(center.name)
@@ -85,7 +89,7 @@ struct ServiceCenterDetailView: View {
     }
 }
 
-// Задача: форма сервисного центра — название, адрес, телефон, примечание
+// Задача: форма сервисного центра — название, адрес, сайт, телефон, email, примечание
 struct ServiceCenterFormView: View {
     let center: ServiceCenter?
     var onCreate: (ServiceCenter) -> Void = { _ in }
@@ -95,6 +99,8 @@ struct ServiceCenterFormView: View {
     @State private var name: String
     @State private var address: String
     @State private var phone: String
+    @State private var website: String
+    @State private var email: String
     @State private var notes: String
 
     init(center: ServiceCenter?, onCreate: @escaping (ServiceCenter) -> Void = { _ in }) {
@@ -103,6 +109,8 @@ struct ServiceCenterFormView: View {
         _name = State(initialValue: center?.name ?? "")
         _address = State(initialValue: center?.address ?? "")
         _phone = State(initialValue: center?.phone ?? "")
+        _website = State(initialValue: center?.website ?? "")
+        _email = State(initialValue: center?.email ?? "")
         _notes = State(initialValue: center?.notes ?? "")
     }
 
@@ -112,8 +120,16 @@ struct ServiceCenterFormView: View {
                 Section {
                     TextField("Name", text: $name)
                     TextField("Address", text: $address, axis: .vertical)
+                    TextField("Website", text: $website)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                     TextField("Phone", text: $phone)
                         .keyboardType(.phonePad)
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
                 Section("Notes") {
                     TextField("Optional", text: $notes, axis: .vertical)
@@ -142,13 +158,15 @@ struct ServiceCenterFormView: View {
         target.name = name.trimmingCharacters(in: .whitespaces)
         target.address = address.trimmingCharacters(in: .whitespacesAndNewlines)
         target.phone = phone.trimmingCharacters(in: .whitespaces)
+        target.website = website.trimmingCharacters(in: .whitespaces)
+        target.email = email.trimmingCharacters(in: .whitespaces)
         target.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         if center == nil { onCreate(target) }
         dismiss()
     }
 }
 
-// Задача: выбор сервисного центра в форме записи — тап выбирает, «+» добавляет новый и сразу выбирает его
+// Задача: выбор сервисного центра в форме визита — тап выбирает, «+» добавляет новый и сразу выбирает его
 struct ServiceCenterPickerView: View {
     @Binding var selection: ServiceCenter?
 

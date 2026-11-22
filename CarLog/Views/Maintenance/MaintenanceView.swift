@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Задача: вкладка Maintenance — три экрана под переключателем: график, записи и справочник работ
+// Задача: вкладка Maintenance — три экрана под переключателем: график, визиты и справочники
 struct MaintenanceView: View {
     @State private var section: MaintenanceSection = .schedule
 
@@ -9,8 +9,8 @@ struct MaintenanceView: View {
             Group {
                 switch section {
                 case .schedule: ScheduleView()
-                case .records: RecordsView()
-                case .services: ServicesView()
+                case .visits: VisitsView()
+                case .reference: ReferenceView()
                 }
             }
             .safeAreaInset(edge: .top) {
@@ -29,15 +29,15 @@ struct MaintenanceView: View {
 
 // Задача: разделы вкладки — подпись в переключателе и заголовок экрана
 enum MaintenanceSection: String, CaseIterable, Identifiable {
-    case schedule, records, services
+    case schedule, visits, reference
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .schedule: "Schedule"
-        case .records: "Records"
-        case .services: "Services"
+        case .visits: "Visits"
+        case .reference: "Reference"
         }
     }
 

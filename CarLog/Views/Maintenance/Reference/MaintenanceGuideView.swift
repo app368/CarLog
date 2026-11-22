@@ -44,7 +44,7 @@ struct MaintenanceGuideView: View {
         .landscapeOnly()
     }
 
-    // Задача: текущий интервал из нормативов приложения — меняется вместе с правками на вкладке Service
+    // Задача: текущий интервал из нормативов приложения — меняется вместе с правками в Reference → Services
     private func appInterval(for row: MaintenanceGuideRow) -> String {
         guard let name = row.appItem, let item = schedule.first(where: { $0.name == name }) else { return "—" }
         return item.intervalShort

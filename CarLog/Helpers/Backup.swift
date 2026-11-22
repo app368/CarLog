@@ -4,12 +4,13 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 // Задача: формат файла выгрузки — все записи приложения в одном JSON.
-// Заправки ссылаются на заправку и марку бензина по номеру в списке, записи о работах — на работу по номеру.
-// Версия 3: справочник сервисных центров и примечания заправок; записи ссылаются на центр по номеру.
-// Версия 2 читается — названия центров из текста записей собираются в справочник.
+// Заправки ссылаются на заправку и марку бензина по номеру в списке,
+// визиты — на сервисный центр по номеру, строки визитов — на работы по номерам.
+// Версия 4: визиты со строками и фото документов (фото — внутри файла, в виде base64).
+// Версии 2 и 3 читаются — справочники берутся, старые записи о работах пропускаются.
 // Версия 1 читается — из неё берутся бензин, страховка и машина, а справочник работ заполняется стартовым набором
 struct Backup: Codable {
-    var version = 3
+    var version = 4
     var exportedAt = Date.now
     var car: CarDTO?
     var stations: [StationDTO] = []
@@ -18,31 +19,32 @@ struct Backup: Codable {
     var insurance: [InsuranceDTO] = []
     var services: [ServiceDTO]?
     var centers: [CenterDTO]?
-    var records: [RecordDTO]?
+    var visits: [VisitDTO]?
 
     var recordCount: Int {
-        fuel.count + insurance.count + (records?.count ?? 0)
+        fuel.count + insurance.count + (visits?.count ?? 0)
     }
 
     struct CarDTO: Codable { var manufacturer: String?; var make, model, vin, plate: String; var year: Int? }
     struct StationDTO: Codable { var name, address: String; var notes: String? }
-    struct CenterDTO: Codable { var name, address, phone, notes: String }
+    struct CenterDTO: Codable { var name, address, phone, notes: String; var website, email: String? }
     struct FuelDTO: Codable {
         var date: Date; var odometer: Int?; var gallons, total: Double
         var station: Int?; var grade: Int?
     }
     struct InsuranceDTO: Codable { var datePaid, validUntil: Date; var amount: Double; var company: String }
     struct ServiceDTO: Codable { var name: String; var intervalMiles, intervalMonths: Int?; var note: String }
-    struct RecordDTO: Codable {
-        var service: Int?; var center: Int?; var date: Date; var odometer: Int?
-        var serviceCenter: String?; var cost: Double; var note: String
+    struct VisitDTO: Codable {
+        var date: Date; var odometer: Int?; var note: String; var center: Int?
+        var lines: [LineDTO]; var pages: [Data]
     }
+    struct LineDTO: Codable { var name: String; var price: Double; var services: [Int] }
 }
 
 // Задача: выгрузка всех записей в JSON и загрузка обратно с полной заменой
 enum BackupService {
     static var fileName: String {
-        "CarLog \(Date.now.formatted(.iso8601.year().month().day()))"
+        "CarLog \(Date.now.fileDay)"
     }
 
     static func export(from context: ModelContext) throws -> Data {
@@ -67,12 +69,17 @@ enum BackupService {
             .init(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths, note: $0.note)
         }
         let centers = try context.fetch(FetchDescriptor<ServiceCenter>())
-        backup.centers = centers.map { .init(name: $0.name, address: $0.address, phone: $0.phone, notes: $0.notes) }
-        backup.records = try context.fetch(FetchDescriptor<MaintenanceRecord>()).map { record in
-            .init(service: record.service.flatMap { s in services.firstIndex { $0 === s } },
-                  center: record.center.flatMap { c in centers.firstIndex { $0 === c } },
-                  date: record.date, odometer: record.odometer,
-                  serviceCenter: nil, cost: record.cost, note: record.note)
+        backup.centers = centers.map {
+            .init(name: $0.name, address: $0.address, phone: $0.phone, notes: $0.notes, website: $0.website, email: $0.email)
+        }
+        backup.visits = try context.fetch(FetchDescriptor<Visit>()).map { visit in
+            .init(date: visit.date, odometer: visit.odometer, note: visit.note,
+                  center: visit.center.flatMap { c in centers.firstIndex { $0 === c } },
+                  lines: visit.sortedLines.map { line in
+                      .init(name: line.name, price: line.price,
+                            services: line.services.compactMap { s in services.firstIndex { $0 === s } })
+                  },
+                  pages: visit.sortedPages.map(\.imageData))
         }
         return try encoder.encode(backup)
     }
@@ -88,7 +95,9 @@ enum BackupService {
         try deleteAll(Station.self, in: context)
         try deleteAll(FuelGrade.self, in: context)
         try deleteAll(InsuranceEntry.self, in: context)
-        try deleteAll(MaintenanceRecord.self, in: context)
+        try deleteAll(Visit.self, in: context)
+        try deleteAll(VisitLine.self, in: context)
+        try deleteAll(DocumentPage.self, in: context)
         try deleteAll(MaintenanceItem.self, in: context)
         try deleteAll(ServiceCenter.self, in: context)
         try deleteAll(CarProfile.self, in: context)
@@ -120,19 +129,26 @@ enum BackupService {
         }).map { MaintenanceItem(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths, note: $0.note) }
         services.forEach(context.insert)
         let centers = (backup.centers ?? []).map {
-            ServiceCenter(name: $0.name, address: $0.address, phone: $0.phone, notes: $0.notes)
+            ServiceCenter(name: $0.name, address: $0.address, phone: $0.phone, website: $0.website ?? "",
+                          email: $0.email ?? "", notes: $0.notes)
         }
         centers.forEach(context.insert)
-        for dto in backup.records ?? [] {
-            let record = MaintenanceRecord(service: nil, center: nil, date: dto.date, odometer: dto.odometer,
-                                           cost: dto.cost, note: dto.note)
-            context.insert(record)
-            record.service = dto.service.flatMap { services.indices.contains($0) ? services[$0] : nil }
-            record.center = dto.center.flatMap { centers.indices.contains($0) ? centers[$0] : nil }
-            record.serviceCenter = dto.serviceCenter ?? ""
+        for dto in backup.visits ?? [] {
+            let visit = Visit(date: dto.date, odometer: dto.odometer, center: nil, note: dto.note)
+            context.insert(visit)
+            visit.center = dto.center.flatMap { centers.indices.contains($0) ? centers[$0] : nil }
+            for (order, lineDTO) in dto.lines.enumerated() {
+                let line = VisitLine(name: lineDTO.name, price: lineDTO.price, order: order)
+                context.insert(line)
+                line.visit = visit
+                line.services = lineDTO.services.compactMap { services.indices.contains($0) ? services[$0] : nil }
+            }
+            for (order, data) in dto.pages.enumerated() {
+                let page = DocumentPage(imageData: data, order: order)
+                context.insert(page)
+                page.visit = visit
+            }
         }
-        // Файл версии 2: центр записан текстом — собрать справочник из названий
-        MaintenanceRecord.migrateCenterNames(in: context)
         try context.save()
     }
 

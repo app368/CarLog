@@ -5,10 +5,10 @@ import SwiftData
 struct ScheduleView: View {
     @Query private var items: [MaintenanceItem]
     @Query private var fuel: [FuelEntry]
-    @Query private var records: [MaintenanceRecord]
+    @Query private var visits: [Visit]
 
     var body: some View {
-        let readings = Mileage.readings(fuel: fuel, records: records)
+        let readings = Mileage.readings(fuel: fuel, visits: visits)
         let current = Mileage.current(readings)
         let lines = MaintenancePlan.lines(for: items, currentMiles: current?.miles,
                                           milesPerDay: Mileage.perDay(readings))
@@ -30,7 +30,7 @@ struct ScheduleView: View {
         .overlay {
             if items.isEmpty {
                 ContentUnavailableView("No services yet", systemImage: "wrench.and.screwdriver",
-                                       description: Text("Add services on the Services tab."))
+                                       description: Text("Add services in Reference → Services."))
             }
         }
     }

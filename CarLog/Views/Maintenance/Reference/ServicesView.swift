@@ -1,8 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// Задача: экран Maintenance Services — справочник работ: название и норматив, по алфавиту.
-// Группы делаются через названия с общим префиксом — при сортировке они встают рядом
+// Задача: экран Maintenance Services (Reference → Services) — справочник работ: название и норматив, по алфавиту
 struct ServicesView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \MaintenanceItem.name) private var items: [MaintenanceItem]
@@ -25,6 +24,8 @@ struct ServicesView: View {
             }
             .onDelete(perform: requestDelete)
         }
+        .navigationTitle("Maintenance Services")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("Add", systemImage: "plus") { isAdding = true }
@@ -51,18 +52,17 @@ struct ServicesView: View {
         }
     }
 
-    // Задача: текст предупреждения с числом записей — «1 record» / «3 records»
+    // Задача: текст предупреждения с числом визитов — «1 visit» / «3 visits»
     private var deleteMessage: String {
-        let count = pendingDelete?.records.count ?? 0
-        return count == 1
-            ? "There is 1 record for this service. It will be deleted too."
-            : "There are \(count) records for this service. They will be deleted too."
+        let count = pendingDelete?.lines.count ?? 0
+        let visits = count == 1 ? "1 visit" : "\(count) visits"
+        return "This service is used in \(visits). The visits will stay, without this service."
     }
 
-    // Задача: удаление свайпом; если по работе есть записи — сначала спросить
+    // Задача: удаление свайпом; если работа есть в визитах — сначала спросить
     private func requestDelete(at offsets: IndexSet) {
         guard let item = offsets.map({ items[$0] }).first else { return }
-        if item.records.isEmpty {
+        if item.lines.isEmpty {
             context.delete(item)
         } else {
             pendingDelete = item
@@ -79,7 +79,7 @@ struct MaintenanceServiceDetailView: View {
         List {
             Section {
                 LabeledContent("Interval", value: item.intervalText)
-                LabeledContent("Records", value: "\(item.records.count)")
+                LabeledContent("Visits", value: "\(item.visits.count)")
             }
             if !item.note.isEmpty {
                 Section("Note") {
@@ -122,8 +122,6 @@ struct MaintenanceServiceFormView: View {
             Form {
                 Section {
                     TextField("Name", text: $name)
-                } footer: {
-                    Text("To group services, start names the same way, e.g. “Timing belt: Water pump”.")
                 }
                 Section {
                     NumberField(title: "Every", text: $intervalMiles, unit: "mi", keyboard: .numberPad)

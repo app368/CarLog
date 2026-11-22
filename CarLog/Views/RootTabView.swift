@@ -37,7 +37,5 @@ struct RootTabView: View {
             }
             didSeedMaintenanceV2 = true
         }
-        // Названия сервисных центров, введённые текстом до появления справочника, переносятся в справочник
-        MaintenanceRecord.migrateCenterNames(in: context)
     }
 }
