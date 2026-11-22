@@ -28,17 +28,18 @@ struct AddressRow: View {
     }
 }
 
-// Задача: строка телефона в карточке — тап набирает номер
+// Задача: строка телефона в карточке — тап набирает номер; подпись можно задать (Phone, Claims и др.)
 struct PhoneRow: View {
+    var title = "Phone"
     let phone: String
 
     var body: some View {
         if let url = URL(string: "tel:" + phone.filter { $0.isNumber || $0 == "+" }), !phone.isEmpty {
-            LabeledContent("Phone") {
+            LabeledContent(title) {
                 Link(phone, destination: url)
             }
         } else {
-            LabeledContent("Phone", value: "—")
+            LabeledContent(title, value: "—")
         }
     }
 }

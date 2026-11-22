@@ -1,13 +1,21 @@
 import SwiftUI
 
-// Задача: карточка оплаты страховки и кнопка Edit
+// Задача: карточка оплаты страховки и кнопка Edit; тап по компании открывает её карточку с контактами
 struct InsuranceDetailView: View {
     let entry: InsuranceEntry
     @State private var isEditing = false
 
     var body: some View {
         List {
-            LabeledContent("Company", value: entry.company.isEmpty ? "—" : entry.company)
+            if let insurer = entry.insurer {
+                NavigationLink {
+                    InsuranceCompanyDetailView(company: insurer)
+                } label: {
+                    LabeledContent("Company", value: insurer.name)
+                }
+            } else {
+                LabeledContent("Company", value: entry.companyName.isEmpty ? "—" : entry.companyName)
+            }
             LabeledContent("Amount", value: entry.amount.asMoney)
             LabeledContent("Paid", value: entry.datePaid.formatted(date: .long, time: .omitted))
             LabeledContent("Valid until", value: entry.validUntil.formatted(date: .long, time: .omitted))

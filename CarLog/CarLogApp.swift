@@ -10,7 +10,7 @@ struct CarLogApp: App {
         WindowGroup {
             RootTabView()
         }
-        .modelContainer(for: [FuelEntry.self, Station.self, FuelGrade.self, InsuranceEntry.self,
+        .modelContainer(for: [FuelEntry.self, Station.self, FuelGrade.self, InsuranceEntry.self, InsuranceCompany.self,
                             MaintenanceItem.self, Visit.self, VisitLine.self, DocumentPage.self,
                             ServiceCenter.self, CarProfile.self])
     }

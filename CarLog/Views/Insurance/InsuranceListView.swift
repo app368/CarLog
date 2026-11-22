@@ -47,7 +47,7 @@ struct InsuranceRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(entry.company.isEmpty ? "Insurance" : entry.company)
+                Text(entry.companyName.isEmpty ? "Insurance" : entry.companyName)
                 Spacer()
                 Text(entry.amount.asMoney)
             }
