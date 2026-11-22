@@ -131,7 +131,7 @@ struct DocumentViewer: View {
     private func load() {
         let pages = visit.sortedPages
         images = pages.compactMap { UIImage(data: $0.imageData) }
-        let day = visit.date.formatted(.iso8601.year().month().day())
+        let day = visit.date.fileDay
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Share", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         files = pages.enumerated().compactMap { number, page in

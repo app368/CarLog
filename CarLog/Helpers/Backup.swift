@@ -44,7 +44,7 @@ struct Backup: Codable {
 // Задача: выгрузка всех записей в JSON и загрузка обратно с полной заменой
 enum BackupService {
     static var fileName: String {
-        "CarLog \(Date.now.formatted(.iso8601.year().month().day()))"
+        "CarLog \(Date.now.fileDay)"
     }
 
     static func export(from context: ModelContext) throws -> Data {

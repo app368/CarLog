@@ -22,6 +22,13 @@ extension Int {
     }
 }
 
+extension Date {
+    // Задача: дата для имени файла — «2025-10-30» по местному времени (стандартный ISO-формат берёт UTC)
+    var fileDay: String {
+        formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day())
+    }
+}
+
 // Задача: разбор чисел из текстовых полей формы (точка или запятая)
 enum NumberInput {
     static func double(_ text: String) -> Double? {
