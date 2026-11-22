@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-// Задача: показание одометра на дату — из заправки или записи о работе
+// Задача: показание одометра на дату — из заправки или визита в сервис
 struct OdometerReading {
     let date: Date
     let miles: Int
@@ -9,10 +9,10 @@ struct OdometerReading {
 
 // Задача: пробег — текущий и средний в день; нужен, чтобы перевести норматив в милях в ориентировочную дату
 enum Mileage {
-    static func readings(fuel: [FuelEntry], records: [MaintenanceRecord]) -> [OdometerReading] {
+    static func readings(fuel: [FuelEntry], visits: [Visit]) -> [OdometerReading] {
         let fromFuel = fuel.compactMap { entry in entry.odometer.map { OdometerReading(date: entry.date, miles: $0) } }
-        let fromRecords = records.compactMap { record in record.odometer.map { OdometerReading(date: record.date, miles: $0) } }
-        return fromFuel + fromRecords
+        let fromVisits = visits.compactMap { visit in visit.odometer.map { OdometerReading(date: visit.date, miles: $0) } }
+        return fromFuel + fromVisits
     }
 
     // Текущий пробег — самое большое показание одометра
@@ -47,10 +47,10 @@ enum ScheduleStatus {
     }
 }
 
-// Задача: одна строка графика — работа, последняя запись, следующий срок и статус
+// Задача: одна строка графика — работа, последний визит с ней, следующий срок и статус
 struct ScheduleLine: Identifiable {
     let item: MaintenanceItem
-    let last: MaintenanceRecord?
+    let last: Visit?
     let nextDate: Date?
     let nextMiles: Int?
     let isEstimated: Bool
@@ -59,14 +59,14 @@ struct ScheduleLine: Identifiable {
     var id: PersistentIdentifier { item.persistentModelID }
 }
 
-// Задача: расчёт графика Maintenance Schedule по справочнику работ и записям
+// Задача: расчёт графика Maintenance Schedule по справочнику работ и визитам
 enum MaintenancePlan {
     // Задача: следующий срок работы.
     // Норматив в месяцах даёт точную дату, в милях — дату по среднему пробегу (со знаком «≈»).
     // Если заданы оба, берётся то, что наступит раньше
     static func line(for item: MaintenanceItem, currentMiles: Int?, milesPerDay: Double?,
                      today: Date = .now) -> ScheduleLine {
-        guard let last = item.lastRecord else {
+        guard let last = item.lastVisit else {
             return ScheduleLine(item: item, last: nil, nextDate: nil, nextMiles: nil, isEstimated: false, status: .noRecord)
         }
         guard item.intervalMiles != nil || item.intervalMonths != nil else {

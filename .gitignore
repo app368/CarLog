@@ -3,5 +3,5 @@ DerivedData/
 .DS_Store
 Local.xcconfig
 CLAUDE.md
-Maintenance/
-Maitenece/
+/Maintenance/
+/Maitenece/

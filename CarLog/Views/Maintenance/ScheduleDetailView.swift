@@ -1,17 +1,16 @@
 import SwiftUI
 import SwiftData
 
-// Задача: карточка работы из графика — норматив, примечание, Last и Next с пробегом,
-// все записи по этой работе и кнопка Add Record
+// Задача: карточка работы из графика — норматив, статус, Last и Next с пробегом, группа работ,
+// примечание и история: визиты, в которых делали эту работу. Работы добавляются через визит
 struct ScheduleDetailView: View {
     let item: MaintenanceItem
 
     @Query private var fuel: [FuelEntry]
-    @Query private var records: [MaintenanceRecord]
-    @State private var isAdding = false
+    @Query private var visits: [Visit]
 
     var body: some View {
-        let readings = Mileage.readings(fuel: fuel, records: records)
+        let readings = Mileage.readings(fuel: fuel, visits: visits)
         let line = MaintenancePlan.line(for: item, currentMiles: Mileage.current(readings)?.miles,
                                         milesPerDay: Mileage.perDay(readings))
         List {
@@ -22,32 +21,42 @@ struct ScheduleDetailView: View {
                 }
                 LabeledContent("Last", value: lastText(line))
                 LabeledContent("Next", value: nextText(line))
+                if let group = ServiceGroups.group(for: item.name) {
+                    NavigationLink {
+                        ServiceGroupDetailView(group: group)
+                    } label: {
+                        LabeledContent("Group", value: group.name)
+                    }
+                }
             }
             if !item.note.isEmpty {
                 Section("Note") {
                     Text(item.note)
                 }
             }
-            Section("Records") {
-                if item.records.isEmpty {
-                    Text("No records yet")
+            Section("History") {
+                if item.lines.isEmpty {
+                    Text("Not done yet")
                         .foregroundStyle(.secondary)
                 }
-                ForEach(item.records.sorted { $0.date > $1.date }) { record in
-                    NavigationLink {
-                        RecordDetailView(record: record)
-                    } label: {
-                        ServiceRecordRow(record: record)
+                ForEach(history) { line in
+                    if let visit = line.visit {
+                        NavigationLink {
+                            VisitDetailView(visit: visit)
+                        } label: {
+                            ServiceHistoryRow(line: line, visit: visit)
+                        }
                     }
                 }
-                Button("Add Record", systemImage: "plus") { isAdding = true }
             }
         }
         .navigationTitle(item.name)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $isAdding) {
-            RecordFormView(record: nil, service: item)
-        }
+    }
+
+    // Задача: строки визитов с этой работой, новые сверху
+    private var history: [VisitLine] {
+        item.lines.filter { $0.visit != nil }.sorted { $0.visit!.date > $1.visit!.date }
     }
 
     // Задача: последняя работа — дата и пробег (в строке графика пробега нет, он здесь)
@@ -64,18 +73,20 @@ struct ScheduleDetailView: View {
     }
 }
 
-// Задача: запись в карточке работы — название работы и так известно, поэтому дата и стоимость, ниже сервисный центр
-struct ServiceRecordRow: View {
-    let record: MaintenanceRecord
+// Задача: визит в истории работы — дата и цена строки, ниже сервисный центр и строка документа.
+// Если в строке несколько работ, цена общая на всю строку
+struct ServiceHistoryRow: View {
+    let line: VisitLine
+    let visit: Visit
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(record.date, format: .dateTime.month(.abbreviated).day().year())
+                Text(visit.date, format: .dateTime.month(.abbreviated).day().year())
                 Spacer()
-                Text(record.cost.asMoney)
+                Text(line.price.asMoney)
             }
-            Text(record.centerName.isEmpty ? "—" : record.centerName)
+            Text([visit.centerName, line.services.count > 1 ? line.name : ""].filter { !$0.isEmpty }.joined(separator: " · "))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

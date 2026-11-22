@@ -1,6 +1,6 @@
 import Foundation
 
-// Задача: таблица переводов названий работ — справочная, только для чтения (вкладка Info → Service names)
+// Задача: таблица переводов названий работ — справочная, только для чтения (Maintenance → Reference → Service names)
 enum ServiceNames {
     static let rows: [(english: String, russian: String)] = [
         ("Oil & filter change", "Замена масла и масляного фильтра"),

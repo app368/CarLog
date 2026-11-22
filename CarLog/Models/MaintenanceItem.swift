@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 // Задача: работа из справочника Maintenance Services — название, норматив по пробегу и/или времени, примечание.
-// Когда работу делали, хранится не здесь, а в записях Maintenance Records
+// Когда работу делали, хранится не здесь, а в строках визитов
 @Model
 final class MaintenanceItem {
     var name: String
@@ -10,9 +10,9 @@ final class MaintenanceItem {
     var intervalMonths: Int?
     var note: String = ""
 
-    // При удалении работы удаляются и её записи — программа заранее спрашивает подтверждение
-    @Relationship(deleteRule: .cascade, inverse: \MaintenanceRecord.service)
-    var records: [MaintenanceRecord] = []
+    // Строки визитов, в которых есть эта работа. При удалении работы строки остаются, работа из них убирается
+    @Relationship(deleteRule: .nullify, inverse: \VisitLine.services)
+    var lines: [VisitLine] = []
 
     init(name: String, intervalMiles: Int?, intervalMonths: Int?, note: String = "") {
         self.name = name
@@ -43,9 +43,14 @@ final class MaintenanceItem {
         ("Valve adjustment", 150_000, nil, "Or when needed.")
     ]
 
-    // Задача: последняя запись по этой работе — от неё график считает Last и Next
-    var lastRecord: MaintenanceRecord? {
-        records.max { $0.date < $1.date }
+    // Задача: визиты, в которых делали эту работу, новые сверху
+    var visits: [Visit] {
+        lines.compactMap(\.visit).sorted { $0.date > $1.date }
+    }
+
+    // Задача: последний визит с этой работой — от него график считает Last и Next
+    var lastVisit: Visit? {
+        lines.compactMap(\.visit).max { $0.date < $1.date }
     }
 
     // Задача: подпись норматива для списков — «5,000 mi or 12 mo»

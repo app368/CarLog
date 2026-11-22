@@ -9,9 +9,9 @@ final class ServiceCenter {
     var phone: String = ""
     var notes: String = ""
 
-    // При удалении центра записи о работах остаются, ссылка просто обнуляется
-    @Relationship(deleteRule: .nullify, inverse: \MaintenanceRecord.center)
-    var records: [MaintenanceRecord] = []
+    // При удалении центра визиты остаются, ссылка просто обнуляется
+    @Relationship(deleteRule: .nullify, inverse: \Visit.center)
+    var visits: [Visit] = []
 
     init(name: String, address: String = "", phone: String = "", notes: String = "") {
         self.name = name

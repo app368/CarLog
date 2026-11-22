@@ -34,7 +34,7 @@ struct ServiceCentersView: View {
             }
             Button("Cancel", role: .cancel) { pendingDelete = nil }
         } message: {
-            Text(UsageText.deleteMessage(count: pendingDelete?.records.count ?? 0, item: "record"))
+            Text(UsageText.deleteMessage(count: pendingDelete?.visits.count ?? 0, item: "visit"))
         }
         .overlay {
             if centers.isEmpty {
@@ -44,10 +44,10 @@ struct ServiceCentersView: View {
         }
     }
 
-    // Задача: удаление свайпом; если по центру уже есть записи — сначала спросить
+    // Задача: удаление свайпом; если у центра уже есть визиты — сначала спросить
     private func requestDelete(at offsets: IndexSet) {
         guard let center = offsets.map({ centers[$0] }).first else { return }
-        if center.records.isEmpty {
+        if center.visits.isEmpty {
             context.delete(center)
         } else {
             pendingDelete = center
@@ -66,7 +66,7 @@ struct ServiceCenterDetailView: View {
                 LabeledContent("Name", value: center.name)
                 AddressRow(address: center.address)
                 PhoneRow(phone: center.phone)
-                LabeledContent("Records", value: "\(center.records.count)")
+                LabeledContent("Visits", value: "\(center.visits.count)")
             }
             if !center.notes.isEmpty {
                 Section("Notes") {
@@ -148,7 +148,7 @@ struct ServiceCenterFormView: View {
     }
 }
 
-// Задача: выбор сервисного центра в форме записи — тап выбирает, «+» добавляет новый и сразу выбирает его
+// Задача: выбор сервисного центра в форме визита — тап выбирает, «+» добавляет новый и сразу выбирает его
 struct ServiceCenterPickerView: View {
     @Binding var selection: ServiceCenter?
 
