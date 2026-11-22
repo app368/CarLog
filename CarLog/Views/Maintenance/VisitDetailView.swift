@@ -17,8 +17,8 @@ struct VisitDetailView: View {
     @State private var pendingPageDelete: DocumentPage?
     @State private var shareFiles: [URL] = []
     @State private var isPickingFile = false
-    @State private var importFile: VisitFile?
     @State private var message: String?
+    @State private var importNotes: String?
 
     var body: some View {
         List {
@@ -75,25 +75,32 @@ struct VisitDetailView: View {
         .fileImporter(isPresented: $isPickingFile, allowedContentTypes: [.json]) { result in
             readFile(result)
         }
-        .sheet(item: $importFile) { file in
-            VisitImportView(file: file, target: visit)
-        }
         .alert(message ?? "", isPresented: Binding(get: { message != nil },
                                                   set: { if !$0 { message = nil } })) {
             Button("OK", role: .cancel) {}
+        }
+        .alert("Visit imported", isPresented: Binding(get: { importNotes != nil },
+                                                      set: { if !$0 { importNotes = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(importNotes ?? "")
         }
         .task(id: visit.pages.count) {
             shareFiles = DocumentFiles.write(visit)
         }
     }
 
-    // Задача: прочитать выбранный файл визита и показать предпросмотр импорта в этот визит
+    // Задача: прочитать файл визита и сразу записать его в этот визит — строки и пробег заменяются,
+    // центр и фото остаются; правки — потом в карточке. Сообщение — только если что-то не сошлось
     private func readFile(_ result: Result<URL, Error>) {
         do {
             let url = try result.get()
             let hasAccess = url.startAccessingSecurityScopedResource()
             defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
-            importFile = try VisitFile.decode(Data(contentsOf: url))
+            let file = try VisitFile.decode(Data(contentsOf: url))
+            let notes = try VisitImporter.problems(for: file, target: visit, in: context)
+            _ = try VisitImporter.apply(file, to: visit, in: context)
+            if !notes.isEmpty { importNotes = notes.joined(separator: "\n\n") }
         } catch {
             message = "This file can't be imported. \(error.localizedDescription)"
         }

@@ -125,6 +125,23 @@ enum VisitImporter {
         return visit
     }
 
+    // Задача: что в файле не сошлось — работы, которых нет в справочнике,
+    // и другая дата при импорте в открытый визит. Пусто — всё в порядке, сообщение не нужно
+    static func problems(for file: VisitFile, target: Visit?, in context: ModelContext) throws -> [String] {
+        let items = try context.fetch(FetchDescriptor<MaintenanceItem>())
+        var result: [String] = []
+        let missing = Set(file.lines.flatMap(\.services).filter { service(named: $0, in: items) == nil })
+        if !missing.isEmpty {
+            result.append("Not found in Services: \(missing.sorted().joined(separator: ", ")). "
+                + "These lines were imported without them.")
+        }
+        if let target, let day = file.day, !Calendar.current.isDate(target.date, inSameDayAs: day) {
+            result.append("The file is for \(day.formatted(date: .abbreviated, time: .omitted)), "
+                + "this visit is on \(target.date.formatted(date: .abbreviated, time: .omitted)). The visit date was kept.")
+        }
+        return result
+    }
+
     private static func sameName(_ a: String, _ b: String) -> Bool {
         a.trimmingCharacters(in: .whitespaces).caseInsensitiveCompare(b.trimmingCharacters(in: .whitespaces)) == .orderedSame
     }

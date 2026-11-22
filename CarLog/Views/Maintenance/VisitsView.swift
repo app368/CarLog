@@ -2,16 +2,17 @@ import SwiftUI
 import SwiftData
 
 // Задача: экран Maintenance Visits — визиты в сервис, новые сверху.
-// «+» — новый визит или импорт из файла; после сохранения сразу открывается карточка визита
+// «+» — меню: новый визит или импорт из файла; после сохранения или импорта сразу открывается карточка визита
 struct VisitsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Visit.date, order: .reverse) private var visits: [Visit]
     @State private var isAdding = false
     @State private var isPickingFile = false
-    @State private var importFile: VisitFile?
     @State private var opened: Visit?
     @State private var pendingDelete: Visit?
     @State private var message: String?
+    @State private var importNotes: String?
+    @State private var imported: Visit?
 
     var body: some View {
         List {
@@ -43,9 +44,6 @@ struct VisitsView: View {
         .fileImporter(isPresented: $isPickingFile, allowedContentTypes: [.json]) { result in
             readFile(result)
         }
-        .sheet(item: $importFile) { file in
-            VisitImportView(file: file) { opened = $0 }
-        }
         .alert("Delete visit?", isPresented: Binding(get: { pendingDelete != nil },
                                                      set: { if !$0 { pendingDelete = nil } })) {
             Button("Delete", role: .destructive) {
@@ -60,6 +58,12 @@ struct VisitsView: View {
                                                   set: { if !$0 { message = nil } })) {
             Button("OK", role: .cancel) {}
         }
+        .alert("Visit imported", isPresented: Binding(get: { importNotes != nil },
+                                                      set: { if !$0 { importNotes = nil } })) {
+            Button("OK", role: .cancel) { opened = imported }
+        } message: {
+            Text(importNotes ?? "")
+        }
         .overlay {
             if visits.isEmpty {
                 ContentUnavailableView("No visits yet", systemImage: "wrench.and.screwdriver",
@@ -68,13 +72,22 @@ struct VisitsView: View {
         }
     }
 
-    // Задача: прочитать выбранный файл визита и показать предпросмотр
+    // Задача: прочитать файл визита и сразу записать — в визит на эту дату или в новый — и открыть карточку.
+    // Если что-то не сошлось, сначала сообщение, карточка — по OK
     private func readFile(_ result: Result<URL, Error>) {
         do {
             let url = try result.get()
             let hasAccess = url.startAccessingSecurityScopedResource()
             defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
-            importFile = try VisitFile.decode(Data(contentsOf: url))
+            let file = try VisitFile.decode(Data(contentsOf: url))
+            let notes = try VisitImporter.problems(for: file, target: nil, in: context)
+            let visit = try VisitImporter.apply(file, in: context)
+            if notes.isEmpty {
+                opened = visit
+            } else {
+                imported = visit
+                importNotes = notes.joined(separator: "\n\n")
+            }
         } catch {
             message = "This file can't be imported. \(error.localizedDescription)"
         }
