@@ -42,6 +42,7 @@ struct Backup: Codable {
     struct EmergencyDTO: Codable { var name, phone, address, website, email, notes, role: String }
     struct InsurerDTO: Codable {
         var name, policyNumber, address, website, phone, claimsPhone, servicePhone, email, notes: String
+        var contactOrder: [String]?
     }
     struct ServiceDTO: Codable { var name: String; var intervalMiles, intervalMonths: Int?; var note: String }
     struct VisitDTO: Codable {
@@ -78,7 +79,8 @@ enum BackupService {
         let insurers = try context.fetch(FetchDescriptor<InsuranceCompany>())
         backup.insurers = insurers.map {
             .init(name: $0.name, policyNumber: $0.policyNumber, address: $0.address, website: $0.website, phone: $0.phone,
-                  claimsPhone: $0.claimsPhone, servicePhone: $0.servicePhone, email: $0.email, notes: $0.notes)
+                  claimsPhone: $0.claimsPhone, servicePhone: $0.servicePhone, email: $0.email, notes: $0.notes,
+                  contactOrder: $0.contactOrder)
         }
         backup.insurance = try context.fetch(FetchDescriptor<InsuranceEntry>()).map { entry in
             .init(datePaid: entry.datePaid, validUntil: entry.validUntil, amount: entry.amount, company: entry.company,
@@ -145,7 +147,7 @@ enum BackupService {
             let company = InsuranceCompany(name: dto.name)
             company.policyNumber = dto.policyNumber; company.address = dto.address; company.website = dto.website
             company.phone = dto.phone; company.claimsPhone = dto.claimsPhone; company.servicePhone = dto.servicePhone
-            company.email = dto.email; company.notes = dto.notes
+            company.email = dto.email; company.notes = dto.notes; company.contactOrder = dto.contactOrder ?? []
             return company
         }
         insurers.forEach(context.insert)

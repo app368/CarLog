@@ -54,10 +54,11 @@ struct InsuranceCompaniesView: View {
 
 // Задача: карточка страховой компании — номер полиса (можно скопировать), адрес (тап — на карту),
 // сайт (браузер), телефоны: общий, Claims (24/7), Customer Service (тап — звонок), email (письмо),
-// примечание и число платежей
+// примечание и число платежей. Строки раздела Contacts можно переставить: кнопка ↑↓ включает перетаскивание
 struct InsuranceCompanyDetailView: View {
     let company: InsuranceCompany
     @State private var isEditing = false
+    @State private var editMode: EditMode = .inactive
 
     var body: some View {
         List {
@@ -68,13 +69,17 @@ struct InsuranceCompanyDetailView: View {
                         .textSelection(.enabled)
                 }
             }
-            Section("Contacts") {
-                AddressRow(address: company.address)
-                WebsiteRow(website: company.website)
-                PhoneRow(phone: company.phone)
-                PhoneRow(title: "Claims (24/7)", phone: company.claimsPhone)
-                PhoneRow(title: "Customer Service", phone: company.servicePhone)
-                EmailRow(email: company.email)
+            Section {
+                ForEach(company.orderedContactFields, id: \.self) { field in
+                    contactRow(field)
+                }
+                .onMove(perform: moveContacts)
+            } header: {
+                Text("Contacts")
+            } footer: {
+                if editMode.isEditing {
+                    Text("Drag the rows into the order you need. Tap Done when finished.")
+                }
             }
             Section("Notes") {
                 Text(company.notes.isEmpty ? "—" : company.notes)
@@ -86,12 +91,44 @@ struct InsuranceCompanyDetailView: View {
         }
         .navigationTitle(company.name)
         .navigationBarTitleDisplayMode(.inline)
+        .environment(\.editMode, $editMode)
         .toolbar {
-            Button("Edit") { isEditing = true }
+            if editMode.isEditing {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { withAnimation { editMode = .inactive } }
+                }
+            } else {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button("Reorder contacts", systemImage: "arrow.up.arrow.down") {
+                        withAnimation { editMode = .active }
+                    }
+                    Button("Edit") { isEditing = true }
+                }
+            }
         }
         .sheet(isPresented: $isEditing) {
             InsuranceCompanyFormView(company: company)
         }
+    }
+
+    // Задача: строка раздела Contacts по названию поля
+    @ViewBuilder
+    private func contactRow(_ field: InsuranceContactField) -> some View {
+        switch field {
+        case .address: AddressRow(address: company.address)
+        case .website: WebsiteRow(website: company.website)
+        case .phone: PhoneRow(phone: company.phone)
+        case .claims: PhoneRow(title: "Claims (24/7)", phone: company.claimsPhone)
+        case .service: PhoneRow(title: "Customer Service", phone: company.servicePhone)
+        case .email: EmailRow(email: company.email)
+        }
+    }
+
+    // Задача: сохранить новый порядок строк в компании
+    private func moveContacts(from source: IndexSet, to destination: Int) {
+        var fields = company.orderedContactFields
+        fields.move(fromOffsets: source, toOffset: destination)
+        company.contactOrder = fields.map(\.rawValue)
     }
 }
 
