@@ -102,7 +102,7 @@ struct CallRow: View {
                 titleBlock
             }
             if let url = ContactLinks.phone(phone) {
-                Button(phone) { openURL(url) }
+                Button(PhoneFormat.format(phone)) { openURL(url) }
                     .buttonStyle(.borderless)
                     .fontWeight(.semibold)
                     .lineLimit(1)

@@ -36,7 +36,7 @@ struct PhoneRow: View {
     var body: some View {
         if let url = ContactLinks.phone(phone) {
             LabeledContent(title) {
-                Link(phone, destination: url)
+                Link(PhoneFormat.format(phone), destination: url)
             }
         } else {
             LabeledContent(title, value: "—")

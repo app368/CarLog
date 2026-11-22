@@ -181,7 +181,8 @@ struct InsuranceCompanyFormView: View {
     }
 }
 
-// Задача: строка формы с подписью слева и полем справа — для телефонов, сайта, почты, номера полиса
+// Задача: строка формы с подписью слева и полем справа — для телефонов, сайта, почты, номера полиса.
+// Телефон (клавиатура phonePad) раскладывается по группам прямо при вводе: (503) 823-3333
 struct LabeledField: View {
     let title: String
     @Binding var text: String
@@ -195,6 +196,7 @@ struct LabeledField: View {
                 .textInputAutocapitalization(capitalization)
                 .autocorrectionDisabled()
                 .multilineTextAlignment(.trailing)
+                .phoneFormatting($text, isOn: keyboard == .phonePad)
         }
     }
 }
