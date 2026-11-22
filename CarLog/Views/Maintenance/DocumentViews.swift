@@ -110,6 +110,7 @@ struct DocumentViewer: View {
             .navigationTitle(images.count > 1 ? "Page \(index + 1) of \(images.count)" : "Document")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }

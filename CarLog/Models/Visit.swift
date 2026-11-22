@@ -61,9 +61,12 @@ final class VisitLine {
         self.order = order
     }
 
-    // Задача: работы строки одной подписью — «Timing belt · Water pump · Drive belt»
+    // Задача: работы строки одной подписью — «Timing belt · Water pump · Drive belt»,
+    // в порядке стартового справочника; свои работы — после, по алфавиту
     var servicesText: String {
-        services.map(\.name).sorted().joined(separator: " · ")
+        let order = MaintenanceItem.defaults.map(\.name)
+        let rank = { (item: MaintenanceItem) in (order.firstIndex(of: item.name) ?? order.count, item.name) }
+        return services.sorted { rank($0) < rank($1) }.map(\.name).joined(separator: " · ")
     }
 }
 
