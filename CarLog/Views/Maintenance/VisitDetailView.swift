@@ -3,7 +3,8 @@ import SwiftData
 import PhotosUI
 
 // Задача: карточка визита — шапка и Total, строки визита (работы с ценами),
-// страницы документа из сервиса и примечание. Edit правит шапку, строки и страницы правятся прямо здесь
+// страницы документа из сервиса и примечание внизу. Edit правит шапку;
+// строки, страницы и примечание правятся прямо здесь
 struct VisitDetailView: View {
     let visit: Visit
 
@@ -19,6 +20,7 @@ struct VisitDetailView: View {
     @State private var isPickingFile = false
     @State private var message: String?
     @State private var importNotes: String?
+    @FocusState private var isEditingNote: Bool
 
     var body: some View {
         List {
@@ -34,16 +36,22 @@ struct VisitDetailView: View {
             }
             linesSection
             documentsSection
-            if !visit.note.isEmpty {
-                Section("Note") {
-                    Text(visit.note)
-                }
-            }
+            notesSection
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Visit")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            Button("Edit") { isEditing = true }
+            // Пока правится примечание, вместо Edit — Done: он закрывает клавиатуру
+            if isEditingNote {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { isEditingNote = false }
+                }
+            } else {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Edit") { isEditing = true }
+                }
+            }
         }
         .sheet(isPresented: $isEditing) {
             VisitFormView(visit: visit)
@@ -104,6 +112,19 @@ struct VisitDetailView: View {
         } catch {
             message = "This file can't be imported. \(error.localizedDescription)"
         }
+    }
+
+    // Задача: примечание внизу карточки — правится прямо здесь, поле растёт вместе с текстом.
+    // Сюда же импорт кладёт ремонт и прочие расходы, не вошедшие в Total
+    private var notesSection: some View {
+        Section("Notes") {
+            TextField("Repairs, extra costs, anything else", text: noteText, axis: .vertical)
+                .focused($isEditingNote)
+        }
+    }
+
+    private var noteText: Binding<String> {
+        Binding(get: { visit.note }, set: { visit.note = $0 })
     }
 
     // Задача: секция строк визита — тап открывает форму строки, свайп удаляет, внизу Add Service

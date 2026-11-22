@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// Задача: форма шапки визита — дата, сервисный центр, пробег, примечание.
+// Задача: форма шапки визита — дата, сервисный центр, пробег (примечание правится в карточке визита).
 // Центр выбирается из справочника и подставляется из прошлого визита
 struct VisitFormView: View {
     let visit: Visit?
@@ -14,7 +14,6 @@ struct VisitFormView: View {
     @State private var date = Date.now
     @State private var center: ServiceCenter?
     @State private var odometer = ""
-    @State private var note = ""
     @State private var didLoad = false
 
     var body: some View {
@@ -28,10 +27,6 @@ struct VisitFormView: View {
                         LabeledContent("Service center", value: center?.name ?? "None")
                     }
                     NumberField(title: "Odometer", text: $odometer, unit: "mi", keyboard: .numberPad)
-                }
-                Section("Note") {
-                    TextField("Optional", text: $note, axis: .vertical)
-                        .lineLimit(2...6)
                 }
             }
             .keyboardDoneButton()
@@ -57,7 +52,6 @@ struct VisitFormView: View {
             date = visit.date
             center = visit.center
             odometer = visit.odometer.map(String.init) ?? ""
-            note = visit.note
         } else {
             center = visits.first?.center
         }
@@ -70,7 +64,6 @@ struct VisitFormView: View {
         target.date = date
         target.center = center
         target.odometer = NumberInput.int(odometer)
-        target.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
         if visit == nil { onCreate(target) }
         dismiss()
     }

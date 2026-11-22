@@ -27,7 +27,7 @@ struct Backup: Codable {
 
     struct CarDTO: Codable { var manufacturer: String?; var make, model, vin, plate: String; var year: Int? }
     struct StationDTO: Codable { var name, address: String; var notes: String? }
-    struct CenterDTO: Codable { var name, address, phone, notes: String }
+    struct CenterDTO: Codable { var name, address, phone, notes: String; var website, email: String? }
     struct FuelDTO: Codable {
         var date: Date; var odometer: Int?; var gallons, total: Double
         var station: Int?; var grade: Int?
@@ -69,7 +69,9 @@ enum BackupService {
             .init(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths, note: $0.note)
         }
         let centers = try context.fetch(FetchDescriptor<ServiceCenter>())
-        backup.centers = centers.map { .init(name: $0.name, address: $0.address, phone: $0.phone, notes: $0.notes) }
+        backup.centers = centers.map {
+            .init(name: $0.name, address: $0.address, phone: $0.phone, notes: $0.notes, website: $0.website, email: $0.email)
+        }
         backup.visits = try context.fetch(FetchDescriptor<Visit>()).map { visit in
             .init(date: visit.date, odometer: visit.odometer, note: visit.note,
                   center: visit.center.flatMap { c in centers.firstIndex { $0 === c } },
@@ -127,7 +129,8 @@ enum BackupService {
         }).map { MaintenanceItem(name: $0.name, intervalMiles: $0.intervalMiles, intervalMonths: $0.intervalMonths, note: $0.note) }
         services.forEach(context.insert)
         let centers = (backup.centers ?? []).map {
-            ServiceCenter(name: $0.name, address: $0.address, phone: $0.phone, notes: $0.notes)
+            ServiceCenter(name: $0.name, address: $0.address, phone: $0.phone, website: $0.website ?? "",
+                          email: $0.email ?? "", notes: $0.notes)
         }
         centers.forEach(context.insert)
         for dto in backup.visits ?? [] {

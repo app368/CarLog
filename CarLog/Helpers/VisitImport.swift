@@ -55,7 +55,7 @@ enum VisitFileError: LocalizedError {
 }
 
 // Задача: перенос файла визита в приложение.
-// Визит ищется только по дате: если он уже введён, строки и пробег заменяются, а центр и фото остаются.
+// Визит ищется только по дате: если он уже введён, строки и пробег заменяются, а центр, фото и своё примечание остаются.
 // Иначе создаётся новый визит. Центр из файла нужен, только если у визита центра нет:
 // не найден в справочнике — добавляется. Работы ищутся по названию
 enum VisitImporter {
@@ -107,7 +107,9 @@ enum VisitImporter {
             }
         }
         visit.odometer = file.odometer ?? visit.odometer
-        if let note = file.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+        // Примечание из файла (ремонт и прочее вне Total) — только если своего ещё нет, чтобы не стереть правки
+        if let note = file.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty,
+           visit.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             visit.note = note
         }
 

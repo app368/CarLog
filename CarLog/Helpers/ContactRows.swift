@@ -43,6 +43,54 @@ struct PhoneRow: View {
     }
 }
 
+// Задача: строка сайта в карточке — тап открывает сайт в браузере; адрес без https:// дополняется
+struct WebsiteRow: View {
+    let website: String
+
+    var body: some View {
+        if let url = ContactLinks.website(website) {
+            LabeledContent("Website") {
+                Link(website, destination: url)
+                    .lineLimit(1)
+            }
+        } else {
+            LabeledContent("Website", value: "—")
+        }
+    }
+}
+
+// Задача: строка email в карточке — тап создаёт новое письмо в почте
+struct EmailRow: View {
+    let email: String
+
+    var body: some View {
+        if let url = ContactLinks.email(email) {
+            LabeledContent("Email") {
+                Link(email, destination: url)
+                    .lineLimit(1)
+            }
+        } else {
+            LabeledContent("Email", value: "—")
+        }
+    }
+}
+
+// Задача: ссылки для сайта и почты
+enum ContactLinks {
+    static func website(_ text: String) -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        let full = trimmed.lowercased().hasPrefix("http") ? trimmed : "https://" + trimmed
+        return URL(string: full)
+    }
+
+    static func email(_ text: String) -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard trimmed.contains("@") else { return nil }
+        return URL(string: "mailto:" + trimmed)
+    }
+}
+
 // Задача: ссылки на карты по адресу. Google Maps откроется в приложении, если оно установлено, иначе в браузере
 enum MapLinks {
     static func apple(_ address: String) -> URL? {
