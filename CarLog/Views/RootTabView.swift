@@ -37,5 +37,7 @@ struct RootTabView: View {
             }
             didSeedMaintenanceV2 = true
         }
+        // Названия страховых компаний, введённые текстом до появления справочника, переносятся в справочник
+        InsuranceEntry.migrateCompanyNames(in: context)
     }
 }

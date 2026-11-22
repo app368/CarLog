@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// Задача: форма добавления и правки оплаты страховки
+// Задача: форма добавления и правки оплаты страховки; компания выбирается из справочника и подставляется из прошлой оплаты
 struct InsuranceFormView: View {
     let entry: InsuranceEntry?
 
@@ -9,7 +9,7 @@ struct InsuranceFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \InsuranceEntry.datePaid, order: .reverse) private var allEntries: [InsuranceEntry]
 
-    @State private var company = ""
+    @State private var company: InsuranceCompany?
     @State private var amount = ""
     @State private var datePaid = Date.now
     @State private var validUntil = Calendar.current.date(byAdding: .month, value: 6, to: .now) ?? .now
@@ -19,7 +19,11 @@ struct InsuranceFormView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Company", text: $company)
+                    NavigationLink {
+                        InsuranceCompanyPickerView(selection: $company)
+                    } label: {
+                        LabeledContent("Company", value: company?.name ?? "None")
+                    }
                     NumberField(title: "Amount", text: $amount, unit: "USD")
                 }
                 Section {
@@ -48,27 +52,24 @@ struct InsuranceFormView: View {
         guard !didLoad else { return }
         didLoad = true
         if let entry {
-            company = entry.company
+            company = entry.insurer
             amount = NumberInput.text(entry.amount)
             datePaid = entry.datePaid
             validUntil = entry.validUntil
         } else {
-            company = allEntries.first?.company ?? ""
+            company = allEntries.first?.insurer
         }
     }
 
     // Задача: сохранить — обновить существующую запись или создать новую
     private func save() {
         guard let value = NumberInput.double(amount) else { return }
-        let cleanCompany = company.trimmingCharacters(in: .whitespaces)
-        if let entry {
-            entry.company = cleanCompany
-            entry.amount = value
-            entry.datePaid = datePaid
-            entry.validUntil = validUntil
-        } else {
-            context.insert(InsuranceEntry(datePaid: datePaid, validUntil: validUntil, amount: value, company: cleanCompany))
-        }
+        let target = entry ?? InsuranceEntry(datePaid: datePaid, validUntil: validUntil, amount: value, company: "")
+        if entry == nil { context.insert(target) }
+        target.insurer = company
+        target.amount = value
+        target.datePaid = datePaid
+        target.validUntil = validUntil
         dismiss()
     }
 }
