@@ -6,13 +6,15 @@ import UniformTypeIdentifiers
 // Задача: формат файла выгрузки — все записи приложения в одном JSON.
 // Заправки ссылаются на заправку и марку бензина по номеру в списке,
 // визиты — на сервисный центр по номеру, строки визитов — на работы по номерам.
+// Версия 7: продления регистрации; у оплат страховки — номер полиса, примечание и документы (снимки и PDF).
+// В старых файлах регистрации нет — тогда она не трогается вместе со своими документами.
 // Версия 6: справочник экстренных служб (в порядке списка). В старых файлах его нет — тогда он не трогается.
 // Версия 5: справочник страховых компаний; платежи ссылаются на компанию по номеру.
 // Версия 4: визиты со строками и фото документов (фото — внутри файла, в виде base64).
 // Версии 2 и 3 читаются — справочники берутся, старые записи о работах пропускаются.
 // Версия 1 читается — из неё берутся бензин, страховка и машина, а справочник работ заполняется стартовым набором
 struct Backup: Codable {
-    var version = 6
+    var version = 7
     var exportedAt = Date.now
     var car: CarDTO?
     var stations: [StationDTO] = []
@@ -20,13 +22,14 @@ struct Backup: Codable {
     var fuel: [FuelDTO] = []
     var insurance: [InsuranceDTO] = []
     var insurers: [InsurerDTO]?
+    var registration: [RegistrationDTO]?
     var emergency: [EmergencyDTO]?
     var services: [ServiceDTO]?
     var centers: [CenterDTO]?
     var visits: [VisitDTO]?
 
     var recordCount: Int {
-        fuel.count + insurance.count + (visits?.count ?? 0)
+        fuel.count + insurance.count + (registration?.count ?? 0) + (visits?.count ?? 0)
     }
 
     struct CarDTO: Codable { var manufacturer: String?; var make, model, vin, plate: String; var year: Int? }
@@ -38,7 +41,14 @@ struct Backup: Codable {
     }
     struct InsuranceDTO: Codable {
         var datePaid, validUntil: Date; var amount: Double; var company: String; var insurer: Int?
+        var policyNumber, notes: String?; var documents: [DocumentDTO]?
     }
+    struct RegistrationDTO: Codable {
+        var issuedBy: String; var datePaid, validUntil: Date; var amount: Double; var notes: String
+        var documents: [DocumentDTO]
+    }
+    // Документ — снимок JPEG или PDF, внутри файла в виде base64
+    struct DocumentDTO: Codable { var data: Data; var isPDF: Bool }
     struct EmergencyDTO: Codable { var name, phone, address, website, email, notes, role: String }
     struct InsurerDTO: Codable {
         var name, policyNumber, address, website, phone, claimsPhone, servicePhone, email, notes: String
@@ -82,7 +92,12 @@ enum BackupService {
         }
         backup.insurance = try context.fetch(FetchDescriptor<InsuranceEntry>()).map { entry in
             .init(datePaid: entry.datePaid, validUntil: entry.validUntil, amount: entry.amount, company: entry.company,
-                  insurer: entry.insurer.flatMap { c in insurers.firstIndex { $0 === c } })
+                  insurer: entry.insurer.flatMap { c in insurers.firstIndex { $0 === c } },
+                  policyNumber: entry.policyNumber, notes: entry.notes, documents: documents(entry.sortedPages))
+        }
+        backup.registration = try context.fetch(FetchDescriptor<RegistrationEntry>()).map { entry in
+            .init(issuedBy: entry.issuedBy, datePaid: entry.datePaid, validUntil: entry.validUntil, amount: entry.amount,
+                  notes: entry.notes, documents: documents(entry.sortedPages))
         }
         let services = try context.fetch(FetchDescriptor<MaintenanceItem>())
         backup.services = services.map {
@@ -104,6 +119,21 @@ enum BackupService {
         return try encoder.encode(backup)
     }
 
+    // Задача: документы записи — для файла выгрузки
+    private static func documents(_ pages: [DocumentPage]) -> [Backup.DocumentDTO] {
+        pages.map { .init(data: $0.imageData, isPDF: $0.isPDF) }
+    }
+
+    // Задача: создать документы из файла и привязать их к записи
+    private static func insertDocuments(_ documents: [Backup.DocumentDTO], in context: ModelContext,
+                                        attach: (DocumentPage) -> Void) {
+        for (order, dto) in documents.enumerated() {
+            let page = DocumentPage(imageData: dto.data, order: order, isPDF: dto.isPDF)
+            context.insert(page)
+            attach(page)
+        }
+    }
+
     // Задача: проверить файл до того, как что-то удалять
     static func decode(_ data: Data) throws -> Backup {
         try decoder.decode(Backup.self, from: data)
@@ -118,7 +148,13 @@ enum BackupService {
         try deleteAll(InsuranceCompany.self, in: context)
         try deleteAll(Visit.self, in: context)
         try deleteAll(VisitLine.self, in: context)
-        try deleteAll(DocumentPage.self, in: context)
+        // Регистрация со своими документами заменяется, только если она есть в файле (версия 7 и новее)
+        if backup.registration != nil {
+            try deleteAll(RegistrationEntry.self, in: context)
+            try deleteAll(DocumentPage.self, in: context)
+        } else {
+            try context.fetch(FetchDescriptor<DocumentPage>()).filter { $0.registration == nil }.forEach(context.delete)
+        }
         try deleteAll(MaintenanceItem.self, in: context)
         try deleteAll(ServiceCenter.self, in: context)
         try deleteAll(CarProfile.self, in: context)
@@ -153,8 +189,18 @@ enum BackupService {
             let entry = InsuranceEntry(datePaid: dto.datePaid, validUntil: dto.validUntil, amount: dto.amount, company: dto.company)
             context.insert(entry)
             entry.insurer = dto.insurer.flatMap { insurers.indices.contains($0) ? insurers[$0] : nil }
+            entry.policyNumber = dto.policyNumber ?? ""
+            entry.notes = dto.notes ?? ""
+            insertDocuments(dto.documents ?? [], in: context) { $0.insurance = entry }
         }
         InsuranceEntry.migrateCompanyNames(in: context)
+        for dto in backup.registration ?? [] {
+            let entry = RegistrationEntry(issuedBy: dto.issuedBy, datePaid: dto.datePaid, validUntil: dto.validUntil,
+                                          amount: dto.amount)
+            context.insert(entry)
+            entry.notes = dto.notes
+            insertDocuments(dto.documents, in: context) { $0.registration = entry }
+        }
         // Экстренные службы: заменяются, только если они есть в файле
         if let emergency = backup.emergency {
             try deleteAll(EmergencyContact.self, in: context)
