@@ -2,18 +2,31 @@ import SwiftUI
 import SwiftData
 
 // Задача: раздел Registration вкладки Documents — продления регистрации, новые сверху.
-// Свайп удаляет после подтверждения
+// Тап открывает карточку, «+» — новую запись, свайп удаляет после подтверждения
 struct RegistrationListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \RegistrationEntry.datePaid, order: .reverse) private var entries: [RegistrationEntry]
+    @State private var isAdding = false
     @State private var pendingDelete: RegistrationEntry?
 
     var body: some View {
         List {
             ForEach(entries) { entry in
-                RegistrationRow(entry: entry)
+                NavigationLink {
+                    RegistrationDetailView(entry: entry)
+                } label: {
+                    RegistrationRow(entry: entry)
+                }
             }
             .onDelete { offsets in pendingDelete = offsets.map { entries[$0] }.first }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Add", systemImage: "plus") { isAdding = true }
+            }
+        }
+        .sheet(isPresented: $isAdding) {
+            RegistrationFormView(entry: nil)
         }
         .alert("Delete registration?", isPresented: Binding(get: { pendingDelete != nil },
                                                             set: { if !$0 { pendingDelete = nil } })) {
