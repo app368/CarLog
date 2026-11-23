@@ -20,13 +20,18 @@ struct InfoView: View {
                 if let car = profiles.first {
                     CarProfileSection(car: car, focus: $isEditingCar)
                 }
-                Section("Emergency") {
+                Section {
                     NavigationLink("Emergency contacts") {
                         EmergencyContactsView()
                     }
                     NavigationLink("Accident guide") {
                         AccidentGuideView()
                     }
+                } header: {
+                    // Заголовок красным — секцию с экстренными службами видно сразу
+                    Text("Emergency")
+                        .foregroundStyle(.red)
+                        .fontWeight(.semibold)
                 }
                 Section("Lists") {
                     NavigationLink("Gas stations") {
