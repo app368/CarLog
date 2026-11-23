@@ -69,16 +69,3 @@ final class VisitLine {
         return services.sorted { rank($0) < rank($1) }.map(\.name).joined(separator: " · ")
     }
 }
-
-// Задача: страница документа из сервиса — снимок хранится отдельным файлом рядом с базой
-@Model
-final class DocumentPage {
-    var visit: Visit?
-    @Attribute(.externalStorage) var imageData: Data
-    var order: Int = 0
-
-    init(imageData: Data, order: Int) {
-        self.imageData = imageData
-        self.order = order
-    }
-}
