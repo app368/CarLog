@@ -1,7 +1,8 @@
 import SwiftUI
 
 // Задача: карточка оплаты страховки — компания (тап открывает её карточку с контактами), номер полиса,
-// сумма, даты; ниже примечание, которое правится прямо здесь. Edit правит поля
+// сумма, даты; ниже документы (страховая карточка, полис) и примечание, которое правится прямо здесь.
+// Edit правит поля
 struct InsuranceDetailView: View {
     let entry: InsuranceEntry
     @State private var isEditing = false
@@ -29,6 +30,9 @@ struct InsuranceDetailView: View {
                     Text(entry.validUntil.formatted(date: .long, time: .omitted))
                         .foregroundStyle(entry.isExpired ? Color.red : Color.secondary)
                 }
+            }
+            AttachedDocumentsSection(pages: entry.sortedPages, fileStem: "Insurance \(entry.datePaid.fileDay)") {
+                $0.insurance = entry
             }
             NotesSection(text: Binding(get: { entry.notes }, set: { entry.notes = $0 }), focus: $isEditingNotes)
         }

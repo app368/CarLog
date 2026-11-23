@@ -70,7 +70,7 @@ struct VisitDetailView: View {
             .ignoresSafeArea()
         }
         .fullScreenCover(item: $viewerStart) { start in
-            DocumentViewer(visit: visit, start: start.index)
+            DocumentViewer(pages: visit.sortedPages, fileStem: visit.fileStem, start: start.index)
         }
         .onChange(of: photoItems) {
             Task { await loadPhotos() }
