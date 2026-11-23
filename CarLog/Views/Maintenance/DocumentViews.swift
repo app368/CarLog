@@ -25,6 +25,7 @@ enum PageImage {
 struct PageThumbnail: View {
     let page: DocumentPage
     @State private var image: UIImage?
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         ZStack {
@@ -40,7 +41,8 @@ struct PageThumbnail: View {
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
         .contentShape(Rectangle())
         .task(id: page.persistentModelID) {
-            let size = CGSize(width: 144, height: 192)
+            // Размер в пикселях экрана — иначе миниатюра выходит мягкой
+            let size = CGSize(width: 72 * displayScale, height: 96 * displayScale)
             if page.isPDF {
                 image = PDFDocument(data: page.imageData)?.page(at: 0)?.thumbnail(of: size, for: .mediaBox)
             } else {
