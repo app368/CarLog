@@ -22,4 +22,10 @@ final class InsuranceCompany {
     init(name: String) {
         self.name = name
     }
+
+    // Задача: текущая страховая — компания последнего платежа, а без платежей — единственная в справочнике.
+    // Нужна строке Insurance claims и руководству по ДТП
+    static func current(payments: [InsuranceEntry], companies: [InsuranceCompany]) -> InsuranceCompany? {
+        payments.max { $0.datePaid < $1.datePaid }?.insurer ?? (companies.count == 1 ? companies.first : nil)
+    }
 }

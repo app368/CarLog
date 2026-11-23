@@ -68,9 +68,9 @@ struct EmergencyContactsView: View {
         }
     }
 
-    // Задача: страховая для строки Claims — компания последнего платежа, а без платежей — единственная в справочнике
+    // Задача: страховая для строки Claims
     private var currentInsurer: InsuranceCompany? {
-        payments.first?.insurer ?? (insurers.count == 1 ? insurers.first : nil)
+        InsuranceCompany.current(payments: payments, companies: insurers)
     }
 
     // Задача: перетаскивание — новый порядок сохраняется номерами по порядку
