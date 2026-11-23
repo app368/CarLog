@@ -28,9 +28,9 @@ struct InfoView: View {
                         AccidentGuideView()
                     }
                 } header: {
-                    // Заголовок красным — секцию с экстренными службами видно сразу
+                    // Заголовок цветом приложения — секцию с экстренными службами видно сразу
                     Text("Emergency")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color.accentColor)
                         .fontWeight(.semibold)
                 }
                 Section("Lists") {
