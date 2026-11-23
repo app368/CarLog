@@ -1,7 +1,8 @@
 import SwiftUI
 import SwiftData
 
-// Задача: форма добавления и правки оплаты страховки; компания выбирается из справочника и подставляется из прошлой оплаты
+// Задача: форма добавления и правки оплаты страховки. Компания — из справочника;
+// в новой оплате компания и номер полиса подставляются из прошлой, срок — через 6 месяцев. Сумма необязательна
 struct InsuranceFormView: View {
     let entry: InsuranceEntry?
 
@@ -10,6 +11,7 @@ struct InsuranceFormView: View {
     @Query(sort: \InsuranceEntry.datePaid, order: .reverse) private var allEntries: [InsuranceEntry]
 
     @State private var company: InsuranceCompany?
+    @State private var policyNumber = ""
     @State private var amount = ""
     @State private var datePaid = Date.now
     @State private var validUntil = Calendar.current.date(byAdding: .month, value: 6, to: .now) ?? .now
@@ -24,6 +26,7 @@ struct InsuranceFormView: View {
                     } label: {
                         LabeledContent("Company", value: company?.name ?? "None")
                     }
+                    LabeledField(title: "Policy number", text: $policyNumber, capitalization: .characters)
                     NumberField(title: "Amount", text: $amount, unit: "USD")
                 }
                 Section {
@@ -40,33 +43,35 @@ struct InsuranceFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", action: save)
-                        .disabled((NumberInput.double(amount) ?? 0) <= 0)
                 }
             }
             .onAppear(perform: load)
         }
     }
 
-    // Задача: заполнить форму — из записи при правке, компанию из последней оплаты при добавлении
+    // Задача: заполнить форму — из записи при правке, компанию и номер полиса из последней оплаты при добавлении
     private func load() {
         guard !didLoad else { return }
         didLoad = true
         if let entry {
             company = entry.insurer
-            amount = NumberInput.text(entry.amount)
+            policyNumber = entry.policyNumber
+            amount = entry.amount > 0 ? NumberInput.text(entry.amount) : ""
             datePaid = entry.datePaid
             validUntil = entry.validUntil
-        } else {
-            company = allEntries.first?.insurer
+        } else if let last = allEntries.first {
+            company = last.insurer
+            policyNumber = last.policyNumber
         }
     }
 
-    // Задача: сохранить — обновить существующую запись или создать новую
+    // Задача: сохранить — обновить существующую запись или создать новую; пустая сумма сохраняется как 0
     private func save() {
-        guard let value = NumberInput.double(amount) else { return }
+        let value = NumberInput.double(amount) ?? 0
         let target = entry ?? InsuranceEntry(datePaid: datePaid, validUntil: validUntil, amount: value, company: "")
         if entry == nil { context.insert(target) }
         target.insurer = company
+        target.policyNumber = policyNumber.trimmingCharacters(in: .whitespaces)
         target.amount = value
         target.datePaid = datePaid
         target.validUntil = validUntil
