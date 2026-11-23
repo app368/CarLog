@@ -45,3 +45,47 @@ enum NumberInput {
         return value.formatted(.number.grouping(.never).precision(.fractionLength(0...3)).locale(Locale(identifier: "en_US")))
     }
 }
+
+// Задача: номер телефона США в привычном виде — (503) 823-3333, 1 (800) 442-0776, 911.
+// Номера со звёздочкой, буквами или чужим кодом страны (*677, +44…) остаются как введены
+enum PhoneFormat {
+    // typing: true — формат по мере ввода (неполный номер тоже раскладывается по группам);
+    // false — для показа: формат только у полного номера (3, 7 или 10 цифр), остальное как есть
+    static func format(_ text: String, typing: Bool = false) -> String {
+        let allowed = Set("0123456789 ()-.+")
+        guard !text.isEmpty, text.allSatisfy({ allowed.contains($0) }) else { return text }
+        var digits = text.filter(\.isNumber)
+        var prefix = ""
+        if text.hasPrefix("+") {
+            guard digits.first == "1" else { return text }
+            prefix = "+1"
+            digits.removeFirst()
+        } else if digits.first == "1", digits.count > 1 {
+            // У кодов зон США первая цифра не 1 — значит, это междугородний префикс
+            prefix = "1"
+            digits.removeFirst()
+        }
+        if !prefix.isEmpty && digits.isEmpty { return prefix }
+        let lead = prefix.isEmpty ? "" : prefix + " "
+        if typing {
+            guard digits.count <= 10 else { return text }
+            return lead + groups(digits)
+        }
+        switch digits.count {
+        case 10: return lead + groups(digits)
+        case 7 where prefix.isEmpty: return "\(digits.prefix(3))-\(digits.dropFirst(3))"
+        case 3 where prefix.isEmpty: return digits
+        default: return text
+        }
+    }
+
+    // Раскладка по группам без хвостовых разделителей: 503 → (503) 8 → (503) 823-3
+    private static func groups(_ digits: String) -> String {
+        let area = digits.prefix(3), middle = digits.dropFirst(3).prefix(3), last = digits.dropFirst(6)
+        switch digits.count {
+        case 0...3: return String(area)
+        case 4...6: return "(\(area)) \(middle)"
+        default: return "(\(area)) \(middle)-\(last)"
+        }
+    }
+}

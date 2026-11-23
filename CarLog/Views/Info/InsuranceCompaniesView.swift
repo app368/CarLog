@@ -68,12 +68,13 @@ struct InsuranceCompanyDetailView: View {
                         .textSelection(.enabled)
                 }
             }
+            // Сначала два самых нужных номера — Customer Service и Claims, дальше остальное
             Section("Contacts") {
+                PhoneRow(title: "Customer Service", phone: company.servicePhone)
+                PhoneRow(title: "Claims (24/7)", phone: company.claimsPhone)
                 AddressRow(address: company.address)
                 WebsiteRow(website: company.website)
                 PhoneRow(phone: company.phone)
-                PhoneRow(title: "Claims (24/7)", phone: company.claimsPhone)
-                PhoneRow(title: "Customer Service", phone: company.servicePhone)
                 EmailRow(email: company.email)
             }
             Section("Notes") {
@@ -135,11 +136,11 @@ struct InsuranceCompanyFormView: View {
                     LabeledField(title: "Policy number", text: $policyNumber, capitalization: .characters)
                 }
                 Section("Contacts") {
+                    LabeledField(title: "Customer Service", text: $servicePhone, keyboard: .phonePad)
+                    LabeledField(title: "Claims (24/7)", text: $claimsPhone, keyboard: .phonePad)
                     TextField("Address", text: $address, axis: .vertical)
                     LabeledField(title: "Website", text: $website, keyboard: .URL)
                     LabeledField(title: "Phone", text: $phone, keyboard: .phonePad)
-                    LabeledField(title: "Claims (24/7)", text: $claimsPhone, keyboard: .phonePad)
-                    LabeledField(title: "Customer Service", text: $servicePhone, keyboard: .phonePad)
                     LabeledField(title: "Email", text: $email, keyboard: .emailAddress)
                 }
                 Section("Notes") {
@@ -180,7 +181,8 @@ struct InsuranceCompanyFormView: View {
     }
 }
 
-// Задача: строка формы с подписью слева и полем справа — для телефонов, сайта, почты, номера полиса
+// Задача: строка формы с подписью слева и полем справа — для телефонов, сайта, почты, номера полиса.
+// Телефон (клавиатура phonePad) раскладывается по группам прямо при вводе: (503) 823-3333
 struct LabeledField: View {
     let title: String
     @Binding var text: String
@@ -194,6 +196,7 @@ struct LabeledField: View {
                 .textInputAutocapitalization(capitalization)
                 .autocorrectionDisabled()
                 .multilineTextAlignment(.trailing)
+                .phoneFormatting($text, isOn: keyboard == .phonePad)
         }
     }
 }

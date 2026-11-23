@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-// Задача: вкладка Info — данные автомобиля, справочники заправок, сервисных центров и страховых компаний, выгрузка/загрузка
+// Задача: вкладка Info — экстренные службы (первыми, чтобы быстро найти), данные автомобиля, справочники заправок, сервисных центров и страховых компаний, выгрузка/загрузка
 struct InfoView: View {
     @Environment(\.modelContext) private var context
     @Query private var profiles: [CarProfile]
@@ -17,6 +17,11 @@ struct InfoView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Emergency") {
+                    NavigationLink("Emergency contacts") {
+                        EmergencyContactsView()
+                    }
+                }
                 if let car = profiles.first {
                     CarProfileSection(car: car, focus: $isEditingCar)
                 }

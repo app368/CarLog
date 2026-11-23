@@ -126,6 +126,7 @@ struct ServiceCenterFormView: View {
                         .autocorrectionDisabled()
                     TextField("Phone", text: $phone)
                         .keyboardType(.phonePad)
+                        .phoneFormatting($phone)
                     TextField("Email", text: $email)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)

@@ -6,12 +6,13 @@ import UniformTypeIdentifiers
 // Задача: формат файла выгрузки — все записи приложения в одном JSON.
 // Заправки ссылаются на заправку и марку бензина по номеру в списке,
 // визиты — на сервисный центр по номеру, строки визитов — на работы по номерам.
+// Версия 6: справочник экстренных служб (в порядке списка). В старых файлах его нет — тогда он не трогается.
 // Версия 5: справочник страховых компаний; платежи ссылаются на компанию по номеру.
 // Версия 4: визиты со строками и фото документов (фото — внутри файла, в виде base64).
 // Версии 2 и 3 читаются — справочники берутся, старые записи о работах пропускаются.
 // Версия 1 читается — из неё берутся бензин, страховка и машина, а справочник работ заполняется стартовым набором
 struct Backup: Codable {
-    var version = 5
+    var version = 6
     var exportedAt = Date.now
     var car: CarDTO?
     var stations: [StationDTO] = []
@@ -19,6 +20,7 @@ struct Backup: Codable {
     var fuel: [FuelDTO] = []
     var insurance: [InsuranceDTO] = []
     var insurers: [InsurerDTO]?
+    var emergency: [EmergencyDTO]?
     var services: [ServiceDTO]?
     var centers: [CenterDTO]?
     var visits: [VisitDTO]?
@@ -37,6 +39,7 @@ struct Backup: Codable {
     struct InsuranceDTO: Codable {
         var datePaid, validUntil: Date; var amount: Double; var company: String; var insurer: Int?
     }
+    struct EmergencyDTO: Codable { var name, phone, address, website, email, notes, role: String }
     struct InsurerDTO: Codable {
         var name, policyNumber, address, website, phone, claimsPhone, servicePhone, email, notes: String
     }
@@ -67,6 +70,10 @@ enum BackupService {
             .init(date: entry.date, odometer: entry.odometer, gallons: entry.gallons, total: entry.total,
                   station: entry.station.flatMap { s in stations.firstIndex { $0 === s } },
                   grade: entry.grade.flatMap { g in grades.firstIndex { $0 === g } })
+        }
+        backup.emergency = try context.fetch(FetchDescriptor<EmergencyContact>(sortBy: [SortDescriptor(\.order)])).map {
+            .init(name: $0.name, phone: $0.phone, address: $0.address, website: $0.website, email: $0.email,
+                  notes: $0.notes, role: $0.role)
         }
         let insurers = try context.fetch(FetchDescriptor<InsuranceCompany>())
         backup.insurers = insurers.map {
@@ -148,6 +155,16 @@ enum BackupService {
             entry.insurer = dto.insurer.flatMap { insurers.indices.contains($0) ? insurers[$0] : nil }
         }
         InsuranceEntry.migrateCompanyNames(in: context)
+        // Экстренные службы: заменяются, только если они есть в файле
+        if let emergency = backup.emergency {
+            try deleteAll(EmergencyContact.self, in: context)
+            for (order, dto) in emergency.enumerated() {
+                let contact = EmergencyContact(name: dto.name, order: order)
+                contact.phone = dto.phone; contact.address = dto.address; contact.website = dto.website
+                contact.email = dto.email; contact.notes = dto.notes; contact.role = dto.role
+                context.insert(contact)
+            }
+        }
         // Справочник работ: из файла, а для старого файла без него — стартовый набор
         let services = (backup.services ?? MaintenanceItem.defaults.map {
             Backup.ServiceDTO(name: $0.name, intervalMiles: $0.miles, intervalMonths: $0.months, note: $0.note)
