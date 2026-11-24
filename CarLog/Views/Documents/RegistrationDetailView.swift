@@ -46,7 +46,8 @@ struct RegistrationDetailView: View {
         }
     }
 
-    // Задача: состояние срока — красный, если пора продлевать; синий, если уже есть более поздняя запись
+    // Задача: состояние срока — зелёный, жёлтый за 30 дней до конца, красный, если пора продлевать;
+    // синий, если уже есть более поздняя запись
     private var validity: Validity {
         Validity(validUntil: entry.validUntil, newest: allEntries.map(\.validUntil).max())
     }
