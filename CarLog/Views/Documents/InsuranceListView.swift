@@ -64,8 +64,8 @@ struct InsuranceRow: View {
     }
 }
 
-// Задача: строка списка документов — название и сумма, ниже «Valid until …» зелёным
-// или «Expired …» красным (пора продлевать) или синим (уже заменена). Общая для страховки и регистрации
+// Задача: строка списка документов — название и сумма, ниже «Valid until …» зелёным (жёлтым за 30 дней
+// до конца) или «Expired …» красным (пора продлевать) или синим (уже заменена). Общая для страховки и регистрации
 struct PeriodRow: View {
     let title: String
     let amount: Double
@@ -82,9 +82,9 @@ struct PeriodRow: View {
                 }
             }
             .font(.headline)
-            Text(validity == .valid
-                 ? "Valid until \(validUntil.formatted(date: .abbreviated, time: .omitted))"
-                 : "Expired \(validUntil.formatted(date: .abbreviated, time: .omitted))")
+            Text(validity.isPast
+                 ? "Expired \(validUntil.formatted(date: .abbreviated, time: .omitted))"
+                 : "Valid until \(validUntil.formatted(date: .abbreviated, time: .omitted))")
                 .font(.caption)
                 .foregroundStyle(validity.color)
         }
@@ -92,25 +92,37 @@ struct PeriodRow: View {
 }
 
 // Задача: состояние срока действия записи — по нему красится срок в списке и карточке.
-// Действует — зелёный, как OK в Schedule; истёк, а записи с более поздним сроком нет — красный, пора продлевать;
+// Действует — зелёный, как OK в Schedule; до конца 30 дней или меньше, а продления ещё нет — жёлтый, как Soon;
+// истёк, а записи с более поздним сроком нет — красный, пора продлевать;
 // истёк, но уже есть запись с более поздним сроком — синий, запись заменена
 enum Validity {
-    case valid, expired, replaced
+    case valid, soon, expired, replaced
 
     // newest — самый поздний срок среди всех записей этого вида (страховки или регистрации)
     init(validUntil: Date, newest: Date?) {
-        if validUntil >= Calendar.current.startOfDay(for: .now) {
-            self = .valid
-        } else if let newest, newest > validUntil {
-            self = .replaced
+        let today = Calendar.current.startOfDay(for: .now)
+        // Дней до конца срока — тем же счётом, что в графике работ
+        let daysLeft = Calendar.current.dateComponents([.day], from: today, to: validUntil).day ?? 0
+        // Есть запись с более поздним сроком — эта уже продлена, тревожиться не о чем
+        let isRenewed = newest.map { $0 > validUntil } ?? false
+        if validUntil < today {
+            self = isRenewed ? .replaced : .expired
+        } else if daysLeft <= ScheduleStatus.soonDays && !isRenewed {
+            self = .soon
         } else {
-            self = .expired
+            self = .valid
         }
+    }
+
+    // Срок уже прошёл — в строке «Expired», а не «Valid until»
+    var isPast: Bool {
+        self == .expired || self == .replaced
     }
 
     var color: Color {
         switch self {
         case .valid: .green
+        case .soon: Color("StatusSoon")
         case .expired: .red
         case .replaced: .blue
         }

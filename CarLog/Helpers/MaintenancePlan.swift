@@ -36,6 +36,9 @@ enum Mileage {
 enum ScheduleStatus {
     case noRecord, noInterval, unknown, ok, soon, overdue
 
+    // Сколько дней до срока — уже Soon. Общее для графика работ и сроков документов
+    static let soonDays = 30
+
     var label: String {
         switch self {
         case .noRecord: "No record"
@@ -94,7 +97,7 @@ enum MaintenancePlan {
             status = .unknown
         } else if (milesLeft ?? 1) < 0 || (daysLeft ?? 1) < 0 {
             status = .overdue
-        } else if (milesLeft ?? .max) <= 500 || (daysLeft ?? .max) <= 30 {
+        } else if (milesLeft ?? .max) <= 500 || (daysLeft ?? .max) <= ScheduleStatus.soonDays {
             status = .soon
         } else {
             status = .ok
