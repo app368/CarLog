@@ -63,8 +63,18 @@ struct Backup: Codable {
 
 // Задача: выгрузка всех записей в JSON и загрузка обратно с полной заменой
 enum BackupService {
+    // Задача: имя файла базы — «CarLog Database 2026-11-23 17-42»: дата и время, чтобы выгрузки
+    // за один день не путались (двоеточие в именах файлов нельзя — дефис). Из симулятора — с пометкой
+    // Simulator, чтобы тестовую базу не залить на телефон вместо настоящей
     static var fileName: String {
-        "CarLog \(Date.now.fileDay)"
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH-mm"
+        var name = "CarLog Database \(formatter.string(from: .now))"
+        #if targetEnvironment(simulator)
+        name += " Simulator"
+        #endif
+        return name
     }
 
     static func export(from context: ModelContext) throws -> Data {
