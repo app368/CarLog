@@ -44,17 +44,17 @@ struct InsuranceCompaniesView: View {
         }
     }
 
-    // Задача: предупреждение при удалении — с контактами пропадут и сведения о полисе
+    // Задача: предупреждение при удалении — пропадут контакты, а оплаты останутся без компании
     private var deleteMessage: String {
         let count = pendingDelete?.entries.count ?? 0
-        guard count > 0 else { return "Its contacts and policy number will be deleted." }
+        guard count > 0 else { return "Its contacts will be deleted." }
         return UsageText.deleteMessage(count: count, item: "payment")
     }
 }
 
-// Задача: карточка страховой компании — номер полиса (можно скопировать), адрес (тап — на карту),
-// сайт (браузер), телефоны: общий, Claims (24/7), Customer Service (тап — звонок), email (письмо),
-// примечание и число платежей
+// Задача: карточка страховой компании — номер полиса из последней оплаты (только показ, можно скопировать),
+// адрес (тап — на карту), сайт (браузер), телефоны: общий, Claims (24/7), Customer Service (тап — звонок),
+// email (письмо), примечание и число платежей
 struct InsuranceCompanyDetailView: View {
     let company: InsuranceCompany
     @State private var isEditing = false
@@ -63,9 +63,12 @@ struct InsuranceCompanyDetailView: View {
         List {
             Section {
                 LabeledContent("Name", value: company.name)
-                LabeledContent("Policy number") {
-                    Text(company.policyNumber.isEmpty ? "—" : company.policyNumber)
-                        .textSelection(.enabled)
+                // Номер полиса правится в оплате; здесь он рядом с Claims — его первым спрашивают по телефону
+                if !company.currentPolicyNumber.isEmpty {
+                    LabeledContent("Policy number") {
+                        Text(company.currentPolicyNumber)
+                            .textSelection(.enabled)
+                    }
                 }
             }
             // Сначала два самых нужных номера — Customer Service и Claims, дальше остальное
@@ -105,7 +108,6 @@ struct InsuranceCompanyFormView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
-    @State private var policyNumber: String
     @State private var address: String
     @State private var website: String
     @State private var phone: String
@@ -118,7 +120,6 @@ struct InsuranceCompanyFormView: View {
         self.company = company
         self.onCreate = onCreate
         _name = State(initialValue: company?.name ?? "")
-        _policyNumber = State(initialValue: company?.policyNumber ?? "")
         _address = State(initialValue: company?.address ?? "")
         _website = State(initialValue: company?.website ?? "")
         _phone = State(initialValue: company?.phone ?? "")
@@ -133,7 +134,6 @@ struct InsuranceCompanyFormView: View {
             Form {
                 Section {
                     TextField("Name", text: $name)
-                    LabeledField(title: "Policy number", text: $policyNumber, capitalization: .characters)
                 }
                 Section("Contacts") {
                     LabeledField(title: "Customer Service", text: $servicePhone, keyboard: .phonePad)
@@ -168,7 +168,6 @@ struct InsuranceCompanyFormView: View {
         let target = company ?? InsuranceCompany(name: "")
         if company == nil { context.insert(target) }
         target.name = name.trimmingCharacters(in: .whitespaces)
-        target.policyNumber = policyNumber.trimmingCharacters(in: .whitespaces)
         target.address = address.trimmingCharacters(in: .whitespacesAndNewlines)
         target.website = website.trimmingCharacters(in: .whitespaces)
         target.phone = phone.trimmingCharacters(in: .whitespaces)

@@ -72,7 +72,9 @@ struct AccidentGuideView: View {
         switch item.action {
         case .yourInsurance:
             guard let insurer else { return "Insurance: not set — add it in Info → Insurance companies." }
-            let policy = insurer.policyNumber.isEmpty ? "policy number not set" : "policy \(insurer.policyNumber)"
+            // Номер полиса — из последней оплаты этой компании
+            let number = insurer.currentPolicyNumber
+            let policy = number.isEmpty ? "policy number not set" : "policy \(number)"
             return "Insurance: \(insurer.name) · \(policy)"
         case .yourCar:
             let car = profiles.first

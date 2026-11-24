@@ -6,6 +6,7 @@ import SwiftData
 @Model
 final class InsuranceCompany {
     var name: String
+    // Номер полиса раньше хранился здесь; теперь он в оплате, а поле осталось только для старых данных
     var policyNumber: String = ""
     var address: String = ""
     var website: String = ""
@@ -21,6 +22,11 @@ final class InsuranceCompany {
 
     init(name: String) {
         self.name = name
+    }
+
+    // Задача: номер полиса для карточки компании — из её последней оплаты; правится только в оплате
+    var currentPolicyNumber: String {
+        entries.max { $0.datePaid < $1.datePaid }?.policyNumber ?? ""
     }
 
     // Задача: текущая страховая — компания последнего платежа, а без платежей — единственная в справочнике.

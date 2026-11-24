@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import VisionKit
+import PDFKit
 
 // Задача: снимок страницы для хранения — JPEG, длинная сторона не больше 2400 точек:
 // мелкий шрифт счёта читается, а размер файла остаётся разумным
@@ -20,10 +21,11 @@ enum PageImage {
     }
 }
 
-// Задача: миниатюра страницы документа в карточке визита
+// Задача: миниатюра документа в карточке — снимок или первая страница PDF
 struct PageThumbnail: View {
     let page: DocumentPage
     @State private var image: UIImage?
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         ZStack {
@@ -39,7 +41,13 @@ struct PageThumbnail: View {
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
         .contentShape(Rectangle())
         .task(id: page.persistentModelID) {
-            image = await UIImage(data: page.imageData)?.byPreparingThumbnail(ofSize: CGSize(width: 144, height: 192))
+            // Размер в пикселях экрана — иначе миниатюра выходит мягкой
+            let size = CGSize(width: 72 * displayScale, height: 96 * displayScale)
+            if page.isPDF {
+                image = PDFDocument(data: page.imageData)?.page(at: 0)?.thumbnail(of: size, for: .mediaBox)
+            } else {
+                image = await UIImage(data: page.imageData)?.byPreparingThumbnail(ofSize: size)
+            }
         }
     }
 }
@@ -83,31 +91,55 @@ struct DocumentScanner: UIViewControllerRepresentable {
     }
 }
 
-// Задача: просмотр документа на весь экран — листание страниц, увеличение щипком и двойным тапом,
-// перетаскивание; Share отдаёт все страницы файлами JPEG (AirDrop на Mac, Save to Files)
+// Задача: содержимое документа для просмотра — снимок или PDF
+enum DocumentContent {
+    case image(UIImage)
+    case pdf(PDFDocument)
+
+    init?(page: DocumentPage) {
+        if page.isPDF {
+            guard let document = PDFDocument(data: page.imageData) else { return nil }
+            self = .pdf(document)
+        } else {
+            guard let image = UIImage(data: page.imageData) else { return nil }
+            self = .image(image)
+        }
+    }
+}
+
+// Задача: просмотр документов на весь экран — листание, увеличение щипком и двойным тапом,
+// перетаскивание; PDF листается своими страницами вниз. Share отдаёт все документы файлами
+// JPEG или PDF (AirDrop на Mac, Save to Files). Общий для визита, страховки и регистрации
 struct DocumentViewer: View {
-    let visit: Visit
+    let pages: [DocumentPage]
+    let fileStem: String
     @State private var index: Int
-    @State private var images: [UIImage] = []
+    @State private var contents: [DocumentContent] = []
     @State private var files: [URL] = []
     @Environment(\.dismiss) private var dismiss
 
-    init(visit: Visit, start: Int) {
-        self.visit = visit
+    init(pages: [DocumentPage], fileStem: String, start: Int) {
+        self.pages = pages
+        self.fileStem = fileStem
         _index = State(initialValue: start)
     }
 
     var body: some View {
         NavigationStack {
             TabView(selection: $index) {
-                ForEach(images.indices, id: \.self) { i in
-                    ZoomableImage(image: images[i])
-                        .tag(i)
+                ForEach(contents.indices, id: \.self) { i in
+                    Group {
+                        switch contents[i] {
+                        case .image(let image): ZoomableImage(image: image)
+                        case .pdf(let document): PDFDocumentView(document: document)
+                        }
+                    }
+                    .tag(i)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: images.count > 1 ? .always : .never))
+            .tabViewStyle(.page(indexDisplayMode: contents.count > 1 ? .always : .never))
             .background(Color.black)
-            .navigationTitle(images.count > 1 ? "Page \(index + 1) of \(images.count)" : "Document")
+            .navigationTitle(contents.count > 1 ? "Page \(index + 1) of \(contents.count)" : "Document")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -127,24 +159,52 @@ struct DocumentViewer: View {
         .onAppear(perform: load)
     }
 
-    // Задача: подготовить страницы для показа и файлы для Share
+    // Задача: подготовить документы для показа и файлы для Share
     private func load() {
-        images = visit.sortedPages.compactMap { UIImage(data: $0.imageData) }
-        files = DocumentFiles.write(visit)
+        contents = pages.compactMap(DocumentContent.init(page:))
+        files = DocumentFiles.write(pages, stem: fileStem)
     }
 }
 
-// Задача: страницы документа файлами JPEG для Share — «Visit 2025-10-30 - 1.jpg» во временной папке
+// Задача: документы файлами для Share — «Visit 2025-10-30 - 1.jpg», «Insurance 2026-05-01 - 2.pdf»
+// во временной папке
 enum DocumentFiles {
-    static func write(_ visit: Visit) -> [URL] {
-        let day = visit.date.fileDay
+    static func write(_ pages: [DocumentPage], stem: String) -> [URL] {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Share", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return visit.sortedPages.enumerated().compactMap { number, page in
-            let url = folder.appendingPathComponent("Visit \(day) - \(number + 1).jpg")
+        return pages.enumerated().compactMap { number, page in
+            let url = folder.appendingPathComponent("\(stem) - \(number + 1).\(page.isPDF ? "pdf" : "jpg")")
             return (try? page.imageData.write(to: url)) == nil ? nil : url
         }
     }
+
+    // Задача: страницы документа визита — имя файла по дате визита
+    static func write(_ visit: Visit) -> [URL] {
+        write(visit.sortedPages, stem: visit.fileStem)
+    }
+}
+
+extension Visit {
+    // Задача: начало имени файла документа визита — «Visit 2025-10-30»
+    var fileStem: String { "Visit \(date.fileDay)" }
+}
+
+// Задача: PDF на весь экран — стандартный PDFView: вписывает страницу в экран,
+// увеличение щипком, страницы листаются вниз
+struct PDFDocumentView: UIViewRepresentable {
+    let document: PDFDocument
+
+    func makeUIView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.document = document
+        view.autoScales = true
+        view.displayMode = .singlePageContinuous
+        view.displayDirection = .vertical
+        view.backgroundColor = .black
+        return view
+    }
+
+    func updateUIView(_ view: PDFView, context: Context) {}
 }
 
 // Задача: картинка с увеличением и перетаскиванием — стандартный UIScrollView

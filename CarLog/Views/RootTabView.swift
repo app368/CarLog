@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// Задача: таб-бар — бензин, страховка, обслуживание, графики и данные машины
+// Задача: таб-бар — бензин, документы (страховка и регистрация), обслуживание, графики и данные машины
 struct RootTabView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("didSeedFuelGrades") private var didSeedFuelGrades = false
@@ -12,8 +12,8 @@ struct RootTabView: View {
         TabView {
             FuelListView()
                 .tabItem { Label("Fuel", systemImage: "fuelpump") }
-            InsuranceListView()
-                .tabItem { Label("Insurance", systemImage: "checkmark.shield") }
+            DocumentsView()
+                .tabItem { Label("Documents", systemImage: "person.text.rectangle") }
             MaintenanceView()
                 .tabItem { Label("Maintenance", systemImage: "wrench.and.screwdriver") }
             StatsView()
