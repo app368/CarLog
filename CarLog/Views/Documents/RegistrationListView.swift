@@ -15,7 +15,7 @@ struct RegistrationListView: View {
                 NavigationLink {
                     RegistrationDetailView(entry: entry)
                 } label: {
-                    RegistrationRow(entry: entry)
+                    RegistrationRow(entry: entry, newest: newest)
                 }
             }
             .onDelete { offsets in pendingDelete = offsets.map { entries[$0] }.first }
@@ -45,14 +45,21 @@ struct RegistrationListView: View {
             }
         }
     }
+
+    // Самый поздний срок среди всех регистраций — по нему видно, заменена ли истёкшая
+    private var newest: Date? {
+        entries.map(\.validUntil).max()
+    }
 }
 
 // Задача: строка списка — кто выдал и сумма (если введена), ниже срок действия
 struct RegistrationRow: View {
     let entry: RegistrationEntry
+    let newest: Date?
 
     var body: some View {
         PeriodRow(title: entry.issuedBy.isEmpty ? "Registration" : entry.issuedBy,
-                  amount: entry.amount, validUntil: entry.validUntil, isExpired: entry.isExpired)
+                  amount: entry.amount, validUntil: entry.validUntil,
+                  validity: Validity(validUntil: entry.validUntil, newest: newest))
     }
 }

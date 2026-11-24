@@ -1,10 +1,13 @@
 import SwiftUI
+import SwiftData
 
 // Задача: карточка оплаты страховки — компания (тап открывает её карточку с контактами), номер полиса,
 // сумма, даты; ниже документы (страховая карточка, полис) и примечание, которое правится прямо здесь.
 // Edit правит поля
 struct InsuranceDetailView: View {
     let entry: InsuranceEntry
+    // Все записи этого вида — чтобы понять, заменена ли истёкшая более поздней
+    @Query private var allEntries: [InsuranceEntry]
     @State private var isEditing = false
     @FocusState private var isEditingNotes: Bool
 
@@ -28,7 +31,7 @@ struct InsuranceDetailView: View {
                 LabeledContent("Paid", value: entry.datePaid.formatted(date: .long, time: .omitted))
                 LabeledContent("Valid until") {
                     Text(entry.validUntil.formatted(date: .long, time: .omitted))
-                        .foregroundStyle(entry.isExpired ? Color.red : Color.secondary)
+                        .foregroundStyle(validity.color)
                 }
             }
             AttachedDocumentsSection(pages: entry.sortedPages, fileStem: "Insurance \(entry.datePaid.fileDay)") {
@@ -54,6 +57,11 @@ struct InsuranceDetailView: View {
         .sheet(isPresented: $isEditing) {
             InsuranceFormView(entry: entry)
         }
+    }
+
+    // Задача: состояние срока — красный, если пора продлевать; синий, если уже есть более поздняя запись
+    private var validity: Validity {
+        Validity(validUntil: entry.validUntil, newest: allEntries.map(\.validUntil).max())
     }
 }
 

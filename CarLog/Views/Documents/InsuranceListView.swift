@@ -15,7 +15,7 @@ struct InsuranceListView: View {
                 NavigationLink {
                     InsuranceDetailView(entry: entry)
                 } label: {
-                    InsuranceRow(entry: entry)
+                    InsuranceRow(entry: entry, newest: newest)
                 }
             }
             .onDelete { offsets in pendingDelete = offsets.map { entries[$0] }.first }
@@ -45,25 +45,32 @@ struct InsuranceListView: View {
             }
         }
     }
+
+    // Самый поздний срок среди всех оплат — по нему видно, заменена ли истёкшая
+    private var newest: Date? {
+        entries.map(\.validUntil).max()
+    }
 }
 
 // Задача: строка списка — компания и сумма (если введена), ниже срок действия полиса
 struct InsuranceRow: View {
     let entry: InsuranceEntry
+    let newest: Date?
 
     var body: some View {
         PeriodRow(title: entry.companyName.isEmpty ? "Insurance" : entry.companyName,
-                  amount: entry.amount, validUntil: entry.validUntil, isExpired: entry.isExpired)
+                  amount: entry.amount, validUntil: entry.validUntil,
+                  validity: Validity(validUntil: entry.validUntil, newest: newest))
     }
 }
 
-// Задача: строка списка документов — название и сумма, ниже «Valid until …» или красное «Expired …».
-// Общая для страховки и регистрации
+// Задача: строка списка документов — название и сумма, ниже «Valid until …» или «Expired …»
+// красным (пора продлевать) или синим (уже заменена). Общая для страховки и регистрации
 struct PeriodRow: View {
     let title: String
     let amount: Double
     let validUntil: Date
-    let isExpired: Bool
+    let validity: Validity
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -75,11 +82,37 @@ struct PeriodRow: View {
                 }
             }
             .font(.headline)
-            Text(isExpired
-                 ? "Expired \(validUntil.formatted(date: .abbreviated, time: .omitted))"
-                 : "Valid until \(validUntil.formatted(date: .abbreviated, time: .omitted))")
+            Text(validity == .valid
+                 ? "Valid until \(validUntil.formatted(date: .abbreviated, time: .omitted))"
+                 : "Expired \(validUntil.formatted(date: .abbreviated, time: .omitted))")
                 .font(.caption)
-                .foregroundStyle(isExpired ? Color.red : Color.secondary)
+                .foregroundStyle(validity.color)
+        }
+    }
+}
+
+// Задача: состояние срока действия записи — по нему красится срок в списке и карточке.
+// Действует — серый; истёк, а записи с более поздним сроком нет — красный, пора продлевать;
+// истёк, но уже есть запись с более поздним сроком — синий, запись заменена
+enum Validity {
+    case valid, expired, replaced
+
+    // newest — самый поздний срок среди всех записей этого вида (страховки или регистрации)
+    init(validUntil: Date, newest: Date?) {
+        if validUntil >= Calendar.current.startOfDay(for: .now) {
+            self = .valid
+        } else if let newest, newest > validUntil {
+            self = .replaced
+        } else {
+            self = .expired
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .valid: .secondary
+        case .expired: .red
+        case .replaced: .blue
         }
     }
 }
