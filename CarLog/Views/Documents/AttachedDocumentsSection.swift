@@ -75,18 +75,16 @@ struct AttachedDocumentsSection<Extra: View>: View {
         }
     }
 
-    // Задача: миниатюры в ряд, с прокруткой вбок, если их много
+    // Задача: миниатюры в ряд, с прокруткой вбок, если их много. Тап — на весь экран,
+    // долгое нажатие — удалить именно эту миниатюру (меню contextMenu тут не годится:
+    // список собирает меню всех миниатюр строки в одно и берёт меню первой)
     private var thumbnails: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
                 ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
                     PageThumbnail(page: page)
                         .onTapGesture { viewerStart = PageIndex(index: index) }
-                        .contextMenu {
-                            Button("Delete Document", systemImage: "trash", role: .destructive) {
-                                pendingDelete = page
-                            }
-                        }
+                        .onLongPressGesture { pendingDelete = page }
                 }
             }
             .padding(.vertical, 4)

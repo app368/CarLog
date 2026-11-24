@@ -130,9 +130,9 @@ struct VisitDetailView: View {
         }
     }
 
-    // Задача: меню обработки документов — Share отправляет все документы вместе на Mac для разбора
-    // (надпись по числу: Share Document или Share Documents), Import Visit File загружает разобранный
-    // файл в этот визит. Пока документов нет — только импорт
+    // Задача: меню обработки документов — Share отправляет все документы вместе на Mac для разбора,
+    // Import Visit File загружает разобранный файл в этот визит. Пока документов нет — только импорт.
+    // Надписи по числу документов: Process Document / Documents, Share Document / Documents
     private var processMenu: some View {
         Menu {
             if !shareFiles.isEmpty {
@@ -143,7 +143,8 @@ struct VisitDetailView: View {
             }
             Button("Import Visit File", systemImage: "square.and.arrow.down") { isPickingFile = true }
         } label: {
-            Label("Process Documents", systemImage: "doc.badge.gearshape")
+            Label(visit.pages.count > 1 ? "Process Documents" : "Process Document",
+                  systemImage: "doc.badge.gearshape")
         }
         .fileImporter(isPresented: $isPickingFile, allowedContentTypes: [.json]) { result in
             readFile(result)
