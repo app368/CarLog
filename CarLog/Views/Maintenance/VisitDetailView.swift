@@ -122,7 +122,7 @@ struct VisitDetailView: View {
     }
 
     // Задача: блок документов — общий со страховкой и регистрацией (Add Document, миниатюры);
-    // под миниатюрами меню Process Document
+    // под миниатюрами меню Process Documents
     private var documentsSection: some View {
         AttachedDocumentsSection(pages: visit.sortedPages, fileStem: visit.fileStem,
                                  attach: { $0.visit = visit }) {
@@ -130,18 +130,20 @@ struct VisitDetailView: View {
         }
     }
 
-    // Задача: меню обработки документа — Share Document отправляет все страницы на Mac для разбора,
-    // Import Visit File загружает разобранный файл в этот визит. Пока страниц нет — только импорт
+    // Задача: меню обработки документов — Share отправляет все документы вместе на Mac для разбора
+    // (надпись по числу: Share Document или Share Documents), Import Visit File загружает разобранный
+    // файл в этот визит. Пока документов нет — только импорт
     private var processMenu: some View {
         Menu {
             if !shareFiles.isEmpty {
                 ShareLink(items: shareFiles) {
-                    Label("Share Document", systemImage: "square.and.arrow.up")
+                    Label(shareFiles.count > 1 ? "Share Documents" : "Share Document",
+                          systemImage: "square.and.arrow.up")
                 }
             }
             Button("Import Visit File", systemImage: "square.and.arrow.down") { isPickingFile = true }
         } label: {
-            Label("Process Document", systemImage: "doc.badge.gearshape")
+            Label("Process Documents", systemImage: "doc.badge.gearshape")
         }
         .fileImporter(isPresented: $isPickingFile, allowedContentTypes: [.json]) { result in
             readFile(result)
