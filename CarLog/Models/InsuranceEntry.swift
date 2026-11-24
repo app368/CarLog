@@ -55,9 +55,4 @@ final class InsuranceEntry {
             entry.company = ""
         }
     }
-
-    // Задача: полис истёк — показываем это в списке
-    var isExpired: Bool {
-        validUntil < Calendar.current.startOfDay(for: .now)
-    }
 }

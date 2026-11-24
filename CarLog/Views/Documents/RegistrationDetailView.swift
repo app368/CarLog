@@ -1,9 +1,12 @@
 import SwiftUI
+import SwiftData
 
 // Задача: карточка продления регистрации — кто выдал, сумма, даты; ниже документы
 // (регистрационная карточка) и примечание, которое правится прямо здесь. Edit правит поля
 struct RegistrationDetailView: View {
     let entry: RegistrationEntry
+    // Все записи этого вида — чтобы понять, заменена ли истёкшая более поздней
+    @Query private var allEntries: [RegistrationEntry]
     @State private var isEditing = false
     @FocusState private var isEditingNotes: Bool
 
@@ -15,7 +18,7 @@ struct RegistrationDetailView: View {
                 LabeledContent("Paid", value: entry.datePaid.formatted(date: .long, time: .omitted))
                 LabeledContent("Valid until") {
                     Text(entry.validUntil.formatted(date: .long, time: .omitted))
-                        .foregroundStyle(entry.isExpired ? Color.red : Color.secondary)
+                        .foregroundStyle(validity.color)
                 }
             }
             AttachedDocumentsSection(pages: entry.sortedPages, fileStem: "Registration \(entry.datePaid.fileDay)") {
@@ -41,5 +44,10 @@ struct RegistrationDetailView: View {
         .sheet(isPresented: $isEditing) {
             RegistrationFormView(entry: entry)
         }
+    }
+
+    // Задача: состояние срока — красный, если пора продлевать; синий, если уже есть более поздняя запись
+    private var validity: Validity {
+        Validity(validUntil: entry.validUntil, newest: allEntries.map(\.validUntil).max())
     }
 }

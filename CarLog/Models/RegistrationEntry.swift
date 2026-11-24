@@ -27,9 +27,4 @@ final class RegistrationEntry {
     var sortedPages: [DocumentPage] {
         pages.sorted { $0.order < $1.order }
     }
-
-    // Задача: регистрация истекла — показываем это в списке
-    var isExpired: Bool {
-        validUntil < Calendar.current.startOfDay(for: .now)
-    }
 }
