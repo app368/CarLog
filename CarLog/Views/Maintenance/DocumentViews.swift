@@ -108,14 +108,14 @@ enum DocumentContent {
 }
 
 // Задача: просмотр документов на весь экран — листание, увеличение щипком и двойным тапом,
-// перетаскивание; PDF листается своими страницами вниз. Share отдаёт все документы файлами
-// JPEG или PDF (AirDrop на Mac, Save to Files). Общий для визита, страховки и регистрации
+// перетаскивание; PDF листается своими страницами вниз. Share отдаёт открытый документ файлом
+// JPEG или PDF — например, переслать один инвойс. Общий для визита, страховки и регистрации
 struct DocumentViewer: View {
     let pages: [DocumentPage]
     let fileStem: String
     @State private var index: Int
     @State private var contents: [DocumentContent] = []
-    @State private var files: [URL] = []
+    @State private var files: [URL?] = []
     @Environment(\.dismiss) private var dismiss
 
     init(pages: [DocumentPage], fileStem: String, start: Int) {
@@ -148,8 +148,8 @@ struct DocumentViewer: View {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    if !files.isEmpty {
-                        ShareLink(items: files) {
+                    if let file = currentFile {
+                        ShareLink(item: file) {
                             Label("Share", systemImage: "square.and.arrow.up")
                         }
                     }
@@ -159,10 +159,21 @@ struct DocumentViewer: View {
         .onAppear(perform: load)
     }
 
-    // Задача: подготовить документы для показа и файлы для Share
+    // Файл открытого сейчас документа — его и отдаёт Share
+    private var currentFile: URL? {
+        files.indices.contains(index) ? files[index] : nil
+    }
+
+    // Задача: подготовить документы для показа и файл каждого для Share —
+    // номер в имени тот же, что при отправке всех документов
     private func load() {
-        contents = pages.compactMap(DocumentContent.init(page:))
-        files = DocumentFiles.write(pages, stem: fileStem)
+        contents = []
+        files = []
+        for (number, page) in pages.enumerated() {
+            guard let content = DocumentContent(page: page) else { continue }
+            contents.append(content)
+            files.append(DocumentFiles.write(page, number: number + 1, stem: fileStem))
+        }
     }
 }
 
@@ -170,12 +181,15 @@ struct DocumentViewer: View {
 // во временной папке
 enum DocumentFiles {
     static func write(_ pages: [DocumentPage], stem: String) -> [URL] {
+        pages.enumerated().compactMap { number, page in write(page, number: number + 1, stem: stem) }
+    }
+
+    // Задача: один документ файлом — «Visit 2025-10-30 - 2.jpg»
+    static func write(_ page: DocumentPage, number: Int, stem: String) -> URL? {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Share", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return pages.enumerated().compactMap { number, page in
-            let url = folder.appendingPathComponent("\(stem) - \(number + 1).\(page.isPDF ? "pdf" : "jpg")")
-            return (try? page.imageData.write(to: url)) == nil ? nil : url
-        }
+        let url = folder.appendingPathComponent("\(stem) - \(number).\(page.isPDF ? "pdf" : "jpg")")
+        return (try? page.imageData.write(to: url)) == nil ? nil : url
     }
 
     // Задача: страницы документа визита — имя файла по дате визита
