@@ -4,13 +4,23 @@ import PhotosUI
 import PDFKit
 import UniformTypeIdentifiers
 
-// Задача: блок Documents в карточке страховки и регистрации — миниатюры документов
-// (тап — на весь экран, долгое нажатие — удалить) и Add: сканер, Фото или файл (PDF, JPG, PNG).
-// Куда привязать новый документ, говорит карточка через attach
-struct AttachedDocumentsSection: View {
+// Задача: блок Documents — общий для визита, страховки и регистрации. Сверху Add Document:
+// сканер, Фото или файл (PDF, JPG, PNG); ниже миниатюры (тап — на весь экран, долгое нажатие — удалить);
+// под ними дополнение карточки — у визита меню Process Document. Куда привязать новый документ,
+// говорит карточка через attach
+struct AttachedDocumentsSection<Extra: View>: View {
     let pages: [DocumentPage]
     let fileStem: String
     let attach: (DocumentPage) -> Void
+    let extra: () -> Extra
+
+    init(pages: [DocumentPage], fileStem: String, attach: @escaping (DocumentPage) -> Void,
+         @ViewBuilder extra: @escaping () -> Extra) {
+        self.pages = pages
+        self.fileStem = fileStem
+        self.attach = attach
+        self.extra = extra
+    }
 
     @Environment(\.modelContext) private var context
     @State private var isScanning = false
@@ -23,12 +33,6 @@ struct AttachedDocumentsSection: View {
 
     var body: some View {
         Section {
-            if pages.isEmpty {
-                Text("No documents")
-                    .foregroundStyle(.secondary)
-            } else {
-                thumbnails
-            }
             addMenu
                 .fullScreenCover(isPresented: $isScanning) {
                     DocumentScanner { images in
@@ -58,6 +62,10 @@ struct AttachedDocumentsSection: View {
                                                           set: { if !$0 { message = nil } })) {
                     Button("OK", role: .cancel) {}
                 }
+            if !pages.isEmpty {
+                thumbnails
+            }
+            extra()
         } header: {
             Text("Documents")
         } footer: {
@@ -160,4 +168,17 @@ struct AttachedDocumentsSection: View {
         context.delete(page)
         pendingDelete = nil
     }
+}
+
+// Задача: блок без дополнения — у страховки и регистрации
+extension AttachedDocumentsSection where Extra == EmptyView {
+    init(pages: [DocumentPage], fileStem: String, attach: @escaping (DocumentPage) -> Void) {
+        self.init(pages: pages, fileStem: fileStem, attach: attach) { EmptyView() }
+    }
+}
+
+// Задача: номер документа, с которого открывается просмотр на весь экран
+struct PageIndex: Identifiable {
+    let index: Int
+    var id: Int { index }
 }
