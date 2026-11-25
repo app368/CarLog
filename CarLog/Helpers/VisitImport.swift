@@ -2,11 +2,13 @@ import Foundation
 import SwiftData
 
 // Задача: файл визита — готовится на компьютере по документу из сервиса и импортируется на телефоне.
-// Дата — строкой «2025-10-30», работы — названиями из справочника Maintenance Services.
+// Дата — строкой «2025-10-30», работы — названиями из справочника Maintenance Services,
+// центр — названием из справочника Service centers и, по желанию, его адресом и контактами из шапки документа.
 // Лишние поля (исходный текст строки, ремонт, итоги документа) приложение пропускает — они для разбора
 struct VisitFile: Codable, Identifiable {
     var date: String
     var center: String?
+    var centerDetails: CenterDetails?
     var odometer: Int?
     var note: String?
     var lines: [Line]
@@ -15,6 +17,14 @@ struct VisitFile: Codable, Identifiable {
         var name: String
         var price: Double
         var services: [String]
+    }
+
+    // Адрес и контакты центра из шапки документа — все поля необязательны
+    struct CenterDetails: Codable {
+        var address: String?
+        var phone: String?
+        var website: String?
+        var email: String?
     }
 
     var id: String { date + (center ?? "") }
@@ -55,9 +65,11 @@ enum VisitFileError: LocalizedError {
 }
 
 // Задача: перенос файла визита в приложение.
-// Визит ищется только по дате: если он уже введён, строки и пробег заменяются, а центр, фото и своё примечание остаются.
-// Иначе создаётся новый визит. Центр из файла нужен, только если у визита центра нет:
-// не найден в справочнике — добавляется. Работы ищутся по названию
+// Визит ищется только по дате: если он уже введён, строки и пробег заменяются, а фото и своё примечание остаются.
+// Иначе создаётся новый визит. Центр из файла главнее центра визита — где делали работу, знает документ
+// (форма нового визита подставляет центр прошлого визита, и он мог оказаться чужим).
+// Центр ищется в справочнике по названию: нет — добавляется с адресом и контактами из файла,
+// есть — у него заполняются только пустые поля. Работы ищутся по названию
 enum VisitImporter {
     // Задача: найти уже введённый визит, который этот файл дополняет, — визит в тот же день.
     // Если таких несколько, сначала тот, у которого центр совпадает с файлом
@@ -67,14 +79,36 @@ enum VisitImporter {
         return sameDay.first { sameName($0.centerName, file.centerName) } ?? sameDay.first
     }
 
-    // Задача: нужен ли центр из файла — да, если визит новый или у введённого визита центра нет
-    static func usesFileCenter(_ file: VisitFile, existing: Visit?) -> Bool {
-        !file.centerName.isEmpty && existing?.center == nil
-    }
-
     // Задача: центр из справочника по названию
     static func center(named name: String, in centers: [ServiceCenter]) -> ServiceCenter? {
         centers.first { sameName($0.name, name) }
+    }
+
+    // Задача: центр для визита из файла — найти в справочнике или добавить, и дописать адрес и контакты
+    private static func serviceCenter(for file: VisitFile, in centers: [ServiceCenter],
+                                      context: ModelContext) -> ServiceCenter {
+        let center: ServiceCenter
+        if let found = Self.center(named: file.centerName, in: centers) {
+            center = found
+        } else {
+            center = ServiceCenter(name: file.centerName)
+            context.insert(center)
+        }
+        fillEmptyFields(of: center, from: file.centerDetails)
+        return center
+    }
+
+    // Задача: дописать в центр адрес и контакты из файла — только в пустые поля, правки в справочнике не трогаем
+    private static func fillEmptyFields(of center: ServiceCenter, from details: VisitFile.CenterDetails?) {
+        guard let details else { return }
+        func fill(_ value: inout String, with new: String?) {
+            let new = new?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if value.trimmingCharacters(in: .whitespaces).isEmpty, !new.isEmpty { value = new }
+        }
+        fill(&center.address, with: details.address)
+        fill(&center.phone, with: details.phone)
+        fill(&center.website, with: details.website)
+        fill(&center.email, with: details.email)
     }
 
     // Задача: работа из справочника по названию
@@ -97,14 +131,8 @@ enum VisitImporter {
             visit = Visit(date: file.day ?? .now, odometer: nil, center: nil)
             context.insert(visit)
         }
-        if usesFileCenter(file, existing: existing) {
-            if let found = Self.center(named: file.centerName, in: centers) {
-                visit.center = found
-            } else {
-                let new = ServiceCenter(name: file.centerName)
-                context.insert(new)
-                visit.center = new
-            }
+        if !file.centerName.isEmpty {
+            visit.center = serviceCenter(for: file, in: centers, context: context)
         }
         visit.odometer = file.odometer ?? visit.odometer
         // Примечание из файла (ремонт и прочее вне Total) — только если своего ещё нет, чтобы не стереть правки
