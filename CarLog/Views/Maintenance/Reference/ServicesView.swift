@@ -134,6 +134,7 @@ struct MaintenanceServiceFormView: View {
                 Section("Note") {
                     TextField("Optional", text: $note, axis: .vertical)
                         .lineLimit(2...6)
+                        .clearButton(text: $note)
                 }
             }
             .keyboardDoneButton()

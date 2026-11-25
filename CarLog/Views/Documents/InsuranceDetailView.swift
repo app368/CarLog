@@ -76,6 +76,7 @@ struct NotesSection: View {
         Section("Notes") {
             TextField("Anything worth remembering", text: $text, axis: .vertical)
                 .focused(focus)
+                .clearButton(text: $text)
         }
     }
 }

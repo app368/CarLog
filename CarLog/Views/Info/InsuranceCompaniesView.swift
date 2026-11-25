@@ -146,6 +146,7 @@ struct InsuranceCompanyFormView: View {
                 Section("Notes") {
                     TextField("Optional", text: $notes, axis: .vertical)
                         .lineLimit(2...8)
+                        .clearButton(text: $notes)
                 }
             }
             .keyboardDoneButton()
