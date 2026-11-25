@@ -1,10 +1,15 @@
 import SwiftUI
 
 // Задача: экран Maintenance Reference — все справочники по обслуживанию в одном месте:
-// работы, группы работ, дилерская таблица Acura, проверки при обслуживании и переводы названий
+// план работ на сезон, работы, группы работ, дилерская таблица Acura, проверки при обслуживании и переводы названий
 struct ReferenceView: View {
     var body: some View {
         List {
+            NavigationLink {
+                ServicePlanView()
+            } label: {
+                ReferenceRow(title: "Maintenance plan", subtitle: ServicePlan.title)
+            }
             NavigationLink {
                 ServicesView()
             } label: {
