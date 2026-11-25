@@ -135,6 +135,7 @@ struct ServiceCenterFormView: View {
                 Section("Notes") {
                     TextField("Optional", text: $notes, axis: .vertical)
                         .lineLimit(2...6)
+                        .clearButton(text: $notes)
                 }
             }
             .keyboardDoneButton()

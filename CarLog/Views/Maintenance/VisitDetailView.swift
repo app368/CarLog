@@ -94,6 +94,7 @@ struct VisitDetailView: View {
         Section("Notes") {
             TextField("Repairs, extra costs, anything else", text: noteText, axis: .vertical)
                 .focused($isEditingNote)
+                .clearButton(text: noteText)
         }
     }
 
