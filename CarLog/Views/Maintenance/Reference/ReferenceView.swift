@@ -1,7 +1,7 @@
 import SwiftUI
 
 // Задача: экран Maintenance Reference — все справочники по обслуживанию в одном месте:
-// работы, группы работ, дилерская таблица Acura и переводы названий
+// работы, группы работ, дилерская таблица Acura, проверки при обслуживании и переводы названий
 struct ReferenceView: View {
     var body: some View {
         List {
@@ -19,6 +19,11 @@ struct ReferenceView: View {
                 MaintenanceGuideView()
             } label: {
                 ReferenceRow(title: "Maintenance guide", subtitle: MaintenanceGuide.title)
+            }
+            NavigationLink {
+                MaintenanceChecksView()
+            } label: {
+                ReferenceRow(title: "Maintenance checks", subtitle: "What to check and when")
             }
             NavigationLink {
                 ServiceNamesView()
