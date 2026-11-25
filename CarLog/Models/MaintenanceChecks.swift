@@ -47,7 +47,7 @@ enum MaintenanceChecks {
     static let sections: [MaintenanceCheckSection] = [
         MaintenanceCheckSection(
             english: "1. Every visit", russian: "Каждый заезд",
-            intro: "Замена масла в любом сервисе: 5–10 минут, обычно бесплатно. Acura — код A: долить жидкости, выставить давление в шинах.",
+            intro: "Проверки при замене масла в любом сервисе: 5–10 минут, обычно бесплатно — входят в цену замены. Acura — код A: долить жидкости, выставить давление в шинах.",
             groups: [
                 MaintenanceCheckGroup("Fluids under the hood · Жидкости под капотом", [
                     MaintenanceCheck("Top up under-hood fluids", "Долить жидкости под капотом",
