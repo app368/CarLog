@@ -163,12 +163,13 @@ struct AttachedDocumentsSection<Extra: View>: View {
         page.insurance = nil
         page.registration = nil
         page.visit = nil
+        page.inReference = false
         context.delete(page)
         pendingDelete = nil
     }
 }
 
-// Задача: блок без дополнения — у страховки и регистрации
+// Задача: блок без дополнения — у страховки, регистрации и в Reference
 extension AttachedDocumentsSection where Extra == EmptyView {
     init(pages: [DocumentPage], fileStem: String, attach: @escaping (DocumentPage) -> Void) {
         self.init(pages: pages, fileStem: fileStem, attach: attach) { EmptyView() }
