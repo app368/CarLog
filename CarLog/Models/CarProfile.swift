@@ -11,6 +11,9 @@ final class CarProfile {
     var year: Int?
     var vin: String = ""
     var plate: String = ""
+    // Задача: заметки к визиту в сервис — поле Notes внизу Maintenance → Reference.
+    // Пометки перед поездкой в центр и готовые сообщения для мастера; после визита стираются крестиком
+    var serviceNotes: String = ""
 
     init() {}
 }

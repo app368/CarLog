@@ -6,6 +6,8 @@ import UniformTypeIdentifiers
 // Задача: формат файла выгрузки — все записи приложения в одном JSON.
 // Заправки ссылаются на заправку и марку бензина по номеру в списке,
 // визиты — на сервисный центр по номеру, строки визитов — на работы по номерам.
+// Версия 8: заметки к визиту (поле Notes в Reference) — вместе с данными машины.
+// В старых файлах их нет — тогда заметки на телефоне не трогаются.
 // Версия 7: продления регистрации; у оплат страховки — номер полиса, примечание и документы (снимки и PDF).
 // В старых файлах регистрации нет — тогда она не трогается вместе со своими документами.
 // Версия 6: справочник экстренных служб (в порядке списка). В старых файлах его нет — тогда он не трогается.
@@ -14,7 +16,7 @@ import UniformTypeIdentifiers
 // Версии 2 и 3 читаются — справочники берутся, старые записи о работах пропускаются.
 // Версия 1 читается — из неё берутся бензин, страховка и машина, а справочник работ заполняется стартовым набором
 struct Backup: Codable {
-    var version = 7
+    var version = 8
     var exportedAt = Date.now
     var car: CarDTO?
     var stations: [StationDTO] = []
@@ -32,7 +34,9 @@ struct Backup: Codable {
         fuel.count + insurance.count + (registration?.count ?? 0) + (visits?.count ?? 0)
     }
 
-    struct CarDTO: Codable { var manufacturer: String?; var make, model, vin, plate: String; var year: Int? }
+    struct CarDTO: Codable {
+        var manufacturer: String?; var make, model, vin, plate: String; var year: Int?; var serviceNotes: String?
+    }
     struct StationDTO: Codable { var name, address: String; var notes: String? }
     struct CenterDTO: Codable { var name, address, phone, notes: String; var website, email: String? }
     struct FuelDTO: Codable {
@@ -82,7 +86,8 @@ enum BackupService {
         let grades = try context.fetch(FetchDescriptor<FuelGrade>())
         var backup = Backup()
         backup.car = try context.fetch(FetchDescriptor<CarProfile>()).first.map {
-            .init(manufacturer: $0.manufacturer, make: $0.make, model: $0.model, vin: $0.vin, plate: $0.plate, year: $0.year)
+            .init(manufacturer: $0.manufacturer, make: $0.make, model: $0.model, vin: $0.vin, plate: $0.plate, year: $0.year,
+                  serviceNotes: $0.serviceNotes)
         }
         backup.stations = stations.map { .init(name: $0.name, address: $0.address, notes: $0.notes) }
         backup.grades = grades.map(\.name)
@@ -167,6 +172,8 @@ enum BackupService {
         }
         try deleteAll(MaintenanceItem.self, in: context)
         try deleteAll(ServiceCenter.self, in: context)
+        // Заметки к визиту запоминаются до удаления машины: в файлах до версии 8 их нет, и тогда остаются прежние
+        let keptNotes = try context.fetch(FetchDescriptor<CarProfile>()).first?.serviceNotes ?? ""
         try deleteAll(CarProfile.self, in: context)
 
         let car = CarProfile()
@@ -174,6 +181,7 @@ enum BackupService {
             car.manufacturer = dto.manufacturer ?? ""; car.make = dto.make; car.model = dto.model; car.year = dto.year
             car.vin = dto.vin; car.plate = dto.plate
         }
+        car.serviceNotes = backup.car?.serviceNotes ?? keptNotes
         context.insert(car)
 
         let stations = backup.stations.map { Station(name: $0.name, address: $0.address, notes: $0.notes ?? "") }
