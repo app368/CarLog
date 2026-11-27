@@ -6,8 +6,8 @@ import UniformTypeIdentifiers
 // Задача: формат файла выгрузки — все записи приложения в одном JSON.
 // Заправки ссылаются на заправку и марку бензина по номеру в списке,
 // визиты — на сервисный центр по номеру, строки визитов — на работы по номерам.
-// Версия 8: заметки к визиту (поле Notes в Reference) — вместе с данными машины.
-// В старых файлах их нет — тогда заметки на телефоне не трогаются.
+// Версия 8: заметки к визиту (поле Notes в Reference) — вместе с данными машины — и документы Reference.
+// В старых файлах их нет — тогда заметки и документы Reference на телефоне не трогаются.
 // Версия 7: продления регистрации; у оплат страховки — номер полиса, примечание и документы (снимки и PDF).
 // В старых файлах регистрации нет — тогда она не трогается вместе со своими документами.
 // Версия 6: справочник экстренных служб (в порядке списка). В старых файлах его нет — тогда он не трогается.
@@ -29,6 +29,7 @@ struct Backup: Codable {
     var services: [ServiceDTO]?
     var centers: [CenterDTO]?
     var visits: [VisitDTO]?
+    var referenceDocuments: [DocumentDTO]?
 
     var recordCount: Int {
         fuel.count + insurance.count + (registration?.count ?? 0) + (visits?.count ?? 0)
@@ -131,6 +132,9 @@ enum BackupService {
                   },
                   pages: visit.sortedPages.map(\.imageData))
         }
+        let referencePages = FetchDescriptor<DocumentPage>(predicate: #Predicate { $0.inReference == true },
+                                                           sortBy: [SortDescriptor(\.order)])
+        backup.referenceDocuments = documents(try context.fetch(referencePages))
         return try encoder.encode(backup)
     }
 
@@ -163,13 +167,14 @@ enum BackupService {
         try deleteAll(InsuranceCompany.self, in: context)
         try deleteAll(Visit.self, in: context)
         try deleteAll(VisitLine.self, in: context)
-        // Регистрация со своими документами заменяется, только если она есть в файле (версия 7 и новее)
-        if backup.registration != nil {
-            try deleteAll(RegistrationEntry.self, in: context)
-            try deleteAll(DocumentPage.self, in: context)
-        } else {
-            try context.fetch(FetchDescriptor<DocumentPage>()).filter { $0.registration == nil }.forEach(context.delete)
-        }
+        // Регистрация со своими документами заменяется, только если она есть в файле (версия 7 и новее),
+        // документы Reference — только если они есть в файле (версия 8 и новее); остальные документы удаляются всегда
+        let keepRegistration = backup.registration == nil
+        let keepReference = backup.referenceDocuments == nil
+        if !keepRegistration { try deleteAll(RegistrationEntry.self, in: context) }
+        try context.fetch(FetchDescriptor<DocumentPage>())
+            .filter { !(keepRegistration && $0.registration != nil) && !(keepReference && $0.inReference) }
+            .forEach(context.delete)
         try deleteAll(MaintenanceItem.self, in: context)
         try deleteAll(ServiceCenter.self, in: context)
         // Заметки к визиту запоминаются до удаления машины: в файлах до версии 8 их нет, и тогда остаются прежние
@@ -219,6 +224,8 @@ enum BackupService {
             entry.notes = dto.notes
             insertDocuments(dto.documents, in: context) { $0.registration = entry }
         }
+        // Документы Reference — в порядке файла; в старых файлах их нет, и тогда остаются прежние
+        insertDocuments(backup.referenceDocuments ?? [], in: context) { $0.inReference = true }
         // Экстренные службы: заменяются, только если они есть в файле
         if let emergency = backup.emergency {
             try deleteAll(EmergencyContact.self, in: context)

@@ -3,15 +3,19 @@ import SwiftData
 
 // Задача: экран Maintenance Reference — все справочники по обслуживанию в одном месте:
 // план работ на сезон, работы, группы работ, дилерская таблица Acura, проверки при обслуживании и переводы названий;
-// внизу — заметки к визиту в сервис
+// ниже — документы (готовые файлы, например сообщения для мастера) и заметки к визиту в сервис
 struct ReferenceView: View {
     @Environment(\.modelContext) private var context
     @Query private var profiles: [CarProfile]
+    @Query(filter: #Predicate<DocumentPage> { $0.inReference == true }, sort: \DocumentPage.order)
+    private var documents: [DocumentPage]
     @FocusState private var isEditingNotes: Bool
 
     var body: some View {
         List {
             referenceLinks
+            // Тот же блок, что в визите: Add Document, миниатюры, просмотр с увеличением, удаление долгим нажатием
+            AttachedDocumentsSection(pages: documents, fileStem: "Reference") { $0.inReference = true }
             notesSection
         }
         .scrollDismissesKeyboard(.interactively)
